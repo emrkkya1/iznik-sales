@@ -10,6 +10,14 @@ import { instrumentQuery, logMutation, summarizeResult } from '@/utils/logger';
 
 const TRANSACTIONAL_STALE_MS = 60_000;
 
+export function useProducts() {
+  return useQuery({
+    queryKey: ['products'],
+    queryFn: instrumentQuery('list_products', () => services.products.listProducts(), summarizeResult),
+    staleTime: TRANSACTIONAL_STALE_MS,
+  });
+}
+
 export function useBranchProducts(branchId: string | null, date: string) {
   return useQuery({
     queryKey: ['branch-products', branchId, date],

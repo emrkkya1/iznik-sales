@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, usePathname } from 'expo-router';
@@ -11,6 +11,7 @@ import { NetworkBanner } from '@/components/ui/network-banner';
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
+import { pruneReportCache } from '@/utils/pdf/render';
 import {
   Icon,
   BarChart3Icon,
@@ -58,6 +59,11 @@ export function AdminShell({ children }: AdminShellProps) {
   const signOut = useSignOut();
   const pathname = usePathname();
   const [confirmOpen, setConfirmOpen] = useState(false);
+
+  // Best-effort cleanup of stale generated PDF reports on app shell mount.
+  useEffect(() => {
+    void pruneReportCache(['ozet-', 'subeler-', 'sube-detay-']);
+  }, []);
 
   return (
     <SafeAreaView style={{ flex: 1 }} className="bg-background">

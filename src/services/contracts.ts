@@ -24,6 +24,7 @@ import type {
   ManualPaymentInput,
   MovementRow,
   Payment,
+  Product,
   ReceiptSummary,
   SetBranchProductActiveInput,
   SetBranchProductPriceInput,
@@ -32,6 +33,9 @@ import type {
   UpdateDeliveryInput,
   User,
 } from '@/types';
+import type { SummaryPdfSnapshot } from './supabase/summaryPdfSchema';
+import type { BranchReportSnapshot } from './supabase/branchesReportSchema';
+import type { BranchHubReport } from './supabase/branchHubReportSchema';
 
 export interface AuthRepository {
   getSession(): Promise<AuthSession | null>;
@@ -52,6 +56,7 @@ export interface LocationRepository {
 }
 
 export interface ProductRepository {
+  listProducts(): Promise<Product[]>;
   listBranchProducts(
     branchId: string,
     date: string,
@@ -100,6 +105,11 @@ export interface AdminLocationRepository {
     limit?: number,
     offset?: number,
   ): Promise<MovementRow[]>;
+  /**
+   * M27: single-branch report snapshot for the Şube Detay PDF (period-scoped
+   * metrics, product performance, and a capped movement ledger).
+   */
+  getBranchHubReport(branchId: string, dateFrom: string | null, dateTo: string | null, filters?: PdfReportFilters): Promise<BranchHubReport>;
 }
 
 export interface ReportsRepository {
@@ -109,6 +119,9 @@ export interface ReportsRepository {
   getBranchIncome(range: SummaryRange): Promise<DistributionRow[]>;
   getBranchReturnRate(range: SummaryRange): Promise<DistributionRow[]>;
   getDailySeries(range: SummaryRange): Promise<DailySeriesResult>;
+  // M25: Summary PDF support. One atomic, Zod-validated snapshot that feeds
+  // the whole PDF document.
+  getSummaryPdfSnapshot(range: SummaryRange, filters?: PdfReportFilters): Promise<SummaryPdfSnapshot>;
 }
 
 export interface AnalyticsRepository {
@@ -120,7 +133,19 @@ export interface AnalyticsRepository {
     filters: BranchAnalyticsFilters,
     pagination: { limit: number; offset: number },
   ): Promise<BranchAnalyticsPage>;
+  /**
+   * M26: full filtered branch set + summary + filter echo for the Şubeler
+   * PDF (same filter semantics as listBranches, but no pagination).
+   */
+  getBranchesReport(filters: BranchAnalyticsFilters & Pick<PdfReportFilters, 'productIds'>): Promise<BranchReportSnapshot>;
 }
+
+export type PdfReportFilters = {
+  dateFrom?: string | null;
+  dateTo?: string | null;
+  daysOfWeek?: number[] | null;
+  productIds?: string[] | null;
+};
 
 export interface AppServices {
   auth: AuthRepository;

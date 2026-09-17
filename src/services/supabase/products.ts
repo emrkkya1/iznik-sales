@@ -5,6 +5,7 @@ import type {
   BranchProductWithStatus,
   SetBranchProductActiveInput,
   SetBranchProductPriceInput,
+  Product,
 } from '@/types';
 
 import { supabaseClient } from './supabaseClient';
@@ -30,6 +31,20 @@ type BranchProductRow = {
 };
 
 export const supabaseProductRepository: ProductRepository = {
+  async listProducts() {
+    const { data, error } = await supabaseClient
+      .from('products')
+      .select('id, name, image_url, is_active')
+      .order('name');
+    if (error) throw error;
+    return (data ?? []).map((product) => ({
+      id: product.id,
+      name: product.name,
+      imageUrl: product.image_url,
+      isActive: product.is_active ?? false,
+    })) satisfies Product[];
+  },
+
   async listBranchProducts(branchId, date) {
     const { data, error } = await supabaseClient
       .from('branch_products')

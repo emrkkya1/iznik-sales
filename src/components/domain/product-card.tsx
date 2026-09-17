@@ -20,6 +20,9 @@ type ProductCardProps = {
   onReturnedChange: (quantity: number) => void;
   price: number;
   className?: string;
+  mode?: 'delivery' | 'selection';
+  selected?: boolean;
+  onSelectedChange?: (selected: boolean) => void;
 };
 
 const CARD_HEIGHT = 188;
@@ -36,7 +39,39 @@ export function ProductCard({
   onReturnedChange,
   price,
   className,
+  mode = 'delivery',
+  selected = false,
+  onSelectedChange,
 }: ProductCardProps) {
+  if (mode === 'selection') {
+    return (
+      <Pressable
+        onPress={() => onSelectedChange?.(!selected)}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: selected }}
+        className={`w-full overflow-hidden rounded-xl border ${
+          selected ? 'border-primary bg-accent' : 'border-border bg-card'
+        } ${className ?? ''}`}
+      >
+        <HStack space="sm" className="items-center p-3">
+          <Box className="h-12 w-12 items-center justify-center overflow-hidden rounded-lg bg-muted">
+            {imageUrl ? (
+              <Image source={{ uri: imageUrl }} contentFit="cover" style={{ width: '100%', height: '100%' }} />
+            ) : (
+              <Icon as={PackageIcon} size="md" className="text-muted-foreground" />
+            )}
+          </Box>
+          <Text size="sm" bold numberOfLines={1} className="flex-1 text-foreground">
+            {name}
+          </Text>
+          <Text size="xs" bold className={selected ? 'text-primary' : 'text-muted-foreground'}>
+            {selected ? 'Dahil' : 'Hariç'}
+          </Text>
+        </HStack>
+      </Pressable>
+    );
+  }
+
   const isActive = delivered > 0 || returned > 0;
 
   const handlePress = () => {
