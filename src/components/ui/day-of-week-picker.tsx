@@ -19,7 +19,7 @@ export const DAYS_OF_WEEK: readonly {
   { value: 4, short: 'Pe', label: 'Perşembe' },
   { value: 5, short: 'Cu', label: 'Cuma' },
   { value: 6, short: 'Ct', label: 'Cumartesi' },
-  { value: 0, short: 'Pa', label: 'Pazar' },
+  { value: 0, short: 'Pz', label: 'Pazar' },
 ];
 
 type DayOfWeekPickerProps = {

@@ -14,6 +14,7 @@ import type {
 } from '@/types';
 
 import { supabaseClient } from './supabaseClient';
+import { parseBranchHubReport } from './branchHubReportSchema';
 
 export const supabaseAdminLocationRepository: AdminLocationRepository = {
   async listCitiesWithCounts() {
@@ -139,5 +140,17 @@ export const supabaseAdminLocationRepository: AdminLocationRepository = {
     );
     if (error) throw error;
     return (data ?? []) as unknown as MovementRow[];
+  },
+
+  async getBranchHubReport(branchId, dateFrom, dateTo, filters = {}) {
+    const { data, error } = await supabaseClient.rpc('report_branch_hub_pdf', {
+      p_branch_id: branchId,
+      p_date_from: dateFrom ?? undefined,
+      p_date_to: dateTo ?? undefined,
+      p_days_of_week: filters.daysOfWeek ?? undefined,
+      p_product_ids: filters.productIds ?? undefined,
+    });
+    if (error) throw error;
+    return parseBranchHubReport(data);
   },
 };

@@ -1,6 +1,7 @@
 import type { AnalyticsRepository } from '@/services/contracts';
 
 import { parseBranchAnalyticsPage } from './analyticsSchema';
+import { parseBranchesReportSnapshot } from './branchesReportSchema';
 import { supabaseClient } from './supabaseClient';
 
 function omitEmpty<T extends Record<string, unknown>>(obj: T): Partial<T> {
@@ -35,5 +36,27 @@ export const supabaseAnalyticsRepository: AnalyticsRepository = {
     );
     if (error) throw error;
     return parseBranchAnalyticsPage(data);
+  },
+
+  async getBranchesReport(filters) {
+    const params = omitEmpty({
+      p_search: filters.search,
+      p_status: filters.status ?? 'all',
+      p_date_from: filters.dateFrom,
+      p_date_to: filters.dateTo,
+      p_days_of_week: filters.daysOfWeek,
+      p_city_id: filters.cityId,
+      p_district_id: filters.districtId,
+      p_sort_by: filters.sortBy ?? 'name',
+      p_sort_dir: filters.sortDir ?? 'asc',
+      p_product_ids: filters.productIds ?? undefined,
+    });
+
+    const { data, error } = await supabaseClient.rpc(
+      'report_branches_pdf',
+      params,
+    );
+    if (error) throw error;
+    return parseBranchesReportSnapshot(data);
   },
 };

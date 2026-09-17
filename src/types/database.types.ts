@@ -7,10 +7,30 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.17"
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -553,9 +573,11 @@ export type Database = {
       }
       list_branches_analytics: {
         Args: {
+          p_city_id?: string
           p_date_from?: string
           p_date_to?: string
           p_days_of_week?: number[]
+          p_district_id?: string
           p_limit?: number
           p_offset?: number
           p_search?: string
@@ -602,6 +624,16 @@ export type Database = {
         Args: { p_limit?: number; p_range: string }
         Returns: Json
       }
+      report_branch_hub_pdf: {
+        Args: {
+          p_branch_id: string
+          p_date_from?: string
+          p_date_to?: string
+          p_days_of_week?: number[]
+          p_product_ids?: string[]
+        }
+        Returns: Json
+      }
       report_branch_income: {
         Args: { p_limit?: number; p_range: string }
         Returns: Json
@@ -610,10 +642,34 @@ export type Database = {
         Args: { p_limit?: number; p_range: string }
         Returns: Json
       }
+      report_branches_pdf: {
+        Args: {
+          p_city_id?: string
+          p_date_from?: string
+          p_date_to?: string
+          p_days_of_week?: number[]
+          p_district_id?: string
+          p_product_ids?: string[]
+          p_search?: string
+          p_sort_by?: string
+          p_sort_dir?: string
+          p_status?: string
+        }
+        Returns: Json
+      }
       report_daily_series: { Args: { p_range: string }; Returns: Json }
       report_kpis: { Args: { p_range: string }; Returns: Json }
       report_product_distribution: {
         Args: { p_limit?: number; p_range: string }
+        Returns: Json
+      }
+      report_summary_pdf: {
+        Args: {
+          p_date_from?: string
+          p_date_to?: string
+          p_days_of_week?: number[]
+          p_range?: string
+        }
         Returns: Json
       }
       set_branch_active: {
@@ -759,9 +815,7 @@ export type Enums<
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions] extends infer E
-      ? E
-      : never
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
@@ -778,14 +832,13 @@ export type CompositeTypes<
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions] extends {
-        CompositeTypeName: infer C
-      }
-      ? C
-      : never
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

@@ -19,6 +19,10 @@ import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useBranchesAnalytics } from '@/hooks';
+import { useBranchesReportExport } from '@/hooks/useBranchesReportExport';
+import { ExportSheet } from '@/components/reports/ExportSheet';
+import { ExportTriggerButton } from '@/components/reports/ExportTriggerButton';
+import { ReportFilterConfig } from '@/components/reports/ReportFilterConfig';
 import type {
   BranchAnalyticsFilters,
   BranchAnalyticsRow,
@@ -164,6 +168,10 @@ export function BranchesTableScreen() {
     [query.data],
   );
   const totalCount = query.data?.pages[0]?.totalCount ?? 0;
+
+  const report = useBranchesReportExport();
+  const reportTrigger = report.trigger;
+  const reportBusy = report.isBusy;
 
   const changeSort = useCallback((columnKey: BranchAnalyticsSortBy) => {
     setSort((current) => ({
@@ -329,6 +337,15 @@ export function BranchesTableScreen() {
                 Filtrele{activeCount > 0 ? ` · ${activeCount}` : ''}
               </ButtonText>
             </Button>
+            <ExportTriggerButton
+              label="PDF Rapor"
+              variant="outline"
+              busy={reportBusy}
+              disabled={query.isLoading}
+              onPress={report.open}
+              accessibilityLabel="Şubeler raporunu PDF olarak hazırla"
+              accessibilityHint="Mevcut filtrelere uyan tüm şubeleri PDF raporu olarak oluşturur"
+            />
           </HStack>
         </VStack>
         <BranchTableHeader sort={sort} onSortChange={changeSort} />
@@ -339,6 +356,8 @@ export function BranchesTableScreen() {
       changeSort,
       openFilterSheet,
       query.isLoading,
+      reportBusy,
+      report.open,
       rows.length,
       searchInput,
       sort,
@@ -390,6 +409,26 @@ export function BranchesTableScreen() {
         onEndReachedThreshold={0.4}
         initialNumToRender={20}
         windowSize={7}
+      />
+
+      <ExportSheet
+        isOpen={report.isOpen}
+        onClose={report.close}
+        state={report.state}
+        reportLabel="Şubeler Raporu"
+        contents={['Uygulanan filtreler', 'Genel bakış KPI\'ları', 'Filtreye uyan şubelerin tamamı']}
+        configSlot={<ReportFilterConfig includeProducts includeBranches onCreate={(filters) => void reportTrigger({
+          ...queryFilters,
+          search: filters.search,
+          cityId: filters.cityId,
+          districtId: filters.districtId,
+          dateFrom: filters.dateFrom ?? undefined,
+          dateTo: filters.dateTo ?? undefined,
+          daysOfWeek: filters.daysOfWeek ?? undefined,
+          productIds: filters.productIds ?? undefined,
+        })} />}
+        onShare={() => void report.share()}
+        onRetry={report.retry}
       />
 
       <FilterSheet

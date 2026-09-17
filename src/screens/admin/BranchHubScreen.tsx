@@ -9,6 +9,10 @@ import { HStack } from '@/components/ui/hstack';
 import { Icon, MoreVerticalIcon } from '@/components/ui/icon';
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
+import { ReportFilterConfig } from '@/components/reports/ReportFilterConfig';
+import { ExportSheet } from '@/components/reports/ExportSheet';
+import { ExportTriggerButton } from '@/components/reports/ExportTriggerButton';
+import { useBranchHubReportExport } from '@/hooks/useBranchHubReportExport';
 import { useBranchHubSummary, useSetBranchActive } from '@/hooks';
 import { formatRelativeDate } from '@/utils/formatRelativeDate';
 import { formatCount } from '@/utils/formatCount';
@@ -42,6 +46,7 @@ export function BranchHubScreen() {
 
   const summary = useBranchHubSummary(branchId);
   const setBranchActive = useSetBranchActive();
+  const report = useBranchHubReportExport();
 
   const data = summary.data;
   const isLoading = summary.isLoading;
@@ -94,6 +99,17 @@ export function BranchHubScreen() {
           >
             {data ? `${data.cityName} / ${data.districtName}` : '…'}
           </Text>
+          {data ? (
+            <ExportTriggerButton
+               label="PDF Rapor"
+              variant="outline"
+              busy={report.isBusy}
+              disabled={isLoading}
+              onPress={report.open}
+              accessibilityLabel="Şube raporunu PDF olarak hazırla"
+              accessibilityHint="Dönem seçip bu şubenin detaylı raporunu PDF olarak oluşturur"
+            />
+          ) : null}
           {data ? (
             <Pressable
               ref={menuRef}
@@ -176,6 +192,27 @@ export function BranchHubScreen() {
         {activeTab === 'movements' ? <MovementsTab branchId={branchId} /> : null}
         {activeTab === 'details' ? <DetailsTab branchId={branchId} /> : null}
       </ScrollView>
+
+      <ExportSheet
+        isOpen={report.isOpen}
+        onClose={report.close}
+        state={report.state}
+        reportLabel={`Şube Raporu${data ? ` — ${data.name}` : ''}`}
+        contents={['Şube kimlik bilgileri', 'Dönem KPI\'ları ve bakiye kırılımı', 'Ürün performansı', 'Hareket defteri']}
+        configSlot={
+          <ReportFilterConfig
+            includeProducts
+            onCreate={(filters) => void report.trigger({
+              branchId,
+              dateFrom: filters.dateFrom,
+              dateTo: filters.dateTo,
+              filters,
+            })}
+          />
+        }
+        onShare={() => void report.share()}
+        onRetry={report.retry}
+      />
 
       <ActionMenu
         open={!!menuAnchor && !!data}

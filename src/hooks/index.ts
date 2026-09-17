@@ -5,6 +5,7 @@ export { useSignOut } from './useSignOut';
 export { useCurrentUser } from './useSession';
 export { useCities, useDistricts, useBranches, useBranchLocation } from './useLocations';
 export {
+  useProducts,
   useBranchProducts,
   useBranchProductsWithStatus,
   useSetBranchProductPrice,

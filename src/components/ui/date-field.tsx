@@ -41,7 +41,7 @@ export function DateField({
       ) : null}
 
       <HStack
-        className={`flex-row items-center gap-2 rounded-lg border bg-background px-3 py-2.5 ${
+        className={`flex-row items-center gap-2 rounded-lg border border-border bg-background px-3 py-2.5 ${
           disabled ? 'opacity-50' : ''
         }`}
         pointerEvents={disabled ? 'none' : 'auto'}
