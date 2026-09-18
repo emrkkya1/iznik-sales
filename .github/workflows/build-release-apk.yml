@@ -1,0 +1,151 @@
+name: Build and release APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apk-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version-check:
+    name: Check release version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.app-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read app version
+        id: app-version
+        run: |
+          version="$(jq --raw-output '.expo.version' app.json)"
+          test -n "$version" && test "$version" != "null"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Refuse to overwrite an existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.app-version.outputs.version }}
+        run: |
+          tag="v$VERSION"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $tag already exists. Bump expo.version in app.json before merging."
+            exit 1
+          fi
+
+  build:
+    name: Build Android APK
+    needs: version-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      # Expo embeds EXPO_PUBLIC_* values into the release bundle. Keep this
+      # file in CI only; its source values are GitHub Actions secrets.
+      - name: Create Expo build environment
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
+        run: |
+          test -n "$EXPO_PUBLIC_SUPABASE_URL"
+          test -n "$EXPO_PUBLIC_SUPABASE_ANON_KEY"
+          case "$EXPO_PUBLIC_SUPABASE_URL" in
+            https://*) ;;
+            *)
+              echo 'EXPO_PUBLIC_SUPABASE_URL must be an HTTPS URL.'
+              exit 1
+              ;;
+          esac
+          {
+            printf 'EXPO_PUBLIC_SUPABASE_URL=%s\n' "$EXPO_PUBLIC_SUPABASE_URL"
+            printf 'EXPO_PUBLIC_SUPABASE_ANON_KEY=%s\n' "$EXPO_PUBLIC_SUPABASE_ANON_KEY"
+            if [ -n "$EXPO_PUBLIC_API_URL" ]; then
+              printf 'EXPO_PUBLIC_API_URL=%s\n' "$EXPO_PUBLIC_API_URL"
+            fi
+          } > .env
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate Expo configuration
+        run: |
+          npx expo config --type public --json > /tmp/expo-public-config.json
+          jq --exit-status '
+            .name != null and .name != "" and
+            .slug != null and .slug != "" and
+            .version != null and .version != "" and
+            .android.package != null and .android.package != ""
+          ' /tmp/expo-public-config.json > /dev/null
+
+      # android/ is generated and intentionally ignored in this repository.
+      # Prebuild also applies the embedded-font configuration before Gradle runs.
+      - name: Generate Android project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Assemble release APK
+        env:
+          GRADLE_OPTS: -Xmx4096m -XX:MaxMetaspaceSize=1024m -Dorg.gradle.daemon=false
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a
+        working-directory: android
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tarihi-iznik-firini-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Publish GitHub release
+    needs: [version-check, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: tarihi-iznik-firini-apk
+          path: artifacts
+
+      - name: Create release and attach APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version-check.outputs.version }}
+        run: |
+          tag="v$VERSION"
+          gh release create "$tag" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Release $tag" \
+            --generate-notes \
+            "artifacts/app-release.apk#tarihi-iznik-firini-$tag.apk"
