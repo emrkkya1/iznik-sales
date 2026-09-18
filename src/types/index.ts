@@ -10,6 +10,8 @@ export type {
   Branch,
   BranchLocation,
   Product,
+  CatalogProduct,
+  BranchProductSelection,
   BranchProduct,
   BranchProductPrice,
   Delivery,

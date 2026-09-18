@@ -19,6 +19,10 @@ type BranchProductCardProps = {
   // Tap on the pen icon — typically opens the price-edit sheet.
   onEditPress?: () => void;
   className?: string;
+  priceLabel?: string;
+  archived?: boolean;
+  archiveLabel?: string;
+  onArchivePress?: () => void;
 };
 
 // Visual sibling of src/components/domain/product-card.tsx but with a price
@@ -39,6 +43,10 @@ export function BranchProductCard({
   onPress,
   onEditPress,
   className,
+  priceLabel,
+  archived = false,
+  archiveLabel,
+  onArchivePress,
 }: BranchProductCardProps) {
   const enabled = isActive;
 
@@ -67,15 +75,22 @@ export function BranchProductCard({
       </Box>
 
       <VStack space="sm" className="p-3">
-        <Text size="sm" bold numberOfLines={1} className="text-foreground">
-          {name}
-        </Text>
+        <HStack className="items-center justify-between">
+          <Text size="sm" bold numberOfLines={1} className="flex-1 text-foreground">
+            {name}
+          </Text>
+          {archived ? (
+            <Text size="xs" bold className="text-muted-foreground">
+              Arşivlenmiş
+            </Text>
+          ) : null}
+        </HStack>
+
+        {priceLabel ? <Text size="xs" className="text-muted-foreground">{priceLabel}</Text> : null}
 
         <Box style={{ height: 28 }}>
           <HStack className="h-full items-center justify-between">
-            <Text size="sm" bold className="text-foreground">
-              {formatCurrency(price)}
-            </Text>
+            <Text size="sm" bold className="text-foreground">{formatCurrency(price)}</Text>
             {onEditPress ? (
               <Pressable
                 onPress={(e) => {
@@ -92,6 +107,21 @@ export function BranchProductCard({
             ) : null}
           </HStack>
         </Box>
+        {onArchivePress && archiveLabel ? (
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              onArchivePress();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`${name} ürününü ${archiveLabel.toLocaleLowerCase('tr-TR')}`}
+            className="items-center rounded-md bg-muted py-1.5"
+          >
+            <Text size="xs" bold className={archived ? 'text-primary' : 'text-destructive'}>
+              {archiveLabel}
+            </Text>
+          </Pressable>
+        ) : null}
       </VStack>
     </Pressable>
   );

@@ -71,6 +71,10 @@ export const supabaseAdminLocationRepository: AdminLocationRepository = {
       p_name: input.name,
       p_opening_balance: input.openingBalance,
       p_is_active: input.isActive,
+      p_products: input.products.map((product) => ({
+        productId: product.productId,
+        price: product.price,
+      })),
     });
     if (error) throw error;
     return {

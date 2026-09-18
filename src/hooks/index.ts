@@ -6,6 +6,10 @@ export { useCurrentUser } from './useSession';
 export { useCities, useDistricts, useBranches, useBranchLocation } from './useLocations';
 export {
   useProducts,
+  useCatalogProducts,
+  useCreateCatalogProduct,
+  useSetCatalogProductArchived,
+  useSetCatalogProductDefaultPrice,
   useBranchProducts,
   useBranchProductsWithStatus,
   useSetBranchProductPrice,
