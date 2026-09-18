@@ -2,8 +2,9 @@ import { useRouter } from 'expo-router';
 
 import { Box } from '@/components/ui/box';
 import { HStack } from '@/components/ui/hstack';
-import { ChevronRightIcon, Icon, ListIcon } from '@/components/ui/icon';
+import { ChevronRightIcon, Icon, ListIcon, MailIcon } from '@/components/ui/icon';
 import { Pressable } from '@/components/ui/pressable';
+import { ScrollView } from '@/components/ui/scroll-view';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 
@@ -27,7 +28,7 @@ function SettingsTile({
         <Box className="h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
           <Icon as={icon} size="md" className="text-primary" />
         </Box>
-        <VStack space="xs" className="flex-1">
+        <VStack space="xs" style={{ flex: 1 }}>
           <Text size="md" bold className="text-foreground">
             {title}
           </Text>
@@ -51,7 +52,8 @@ export function SettingsScreen() {
 
   return (
     <Box style={{ flex: 1 }} className="bg-background">
-      <VStack space="md" className="p-6">
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24 }}>
+      <VStack space="md">
         <VStack space="xs">
           <Text size="xl" bold className="text-foreground">
             Ayarlar
@@ -68,8 +70,15 @@ export function SettingsScreen() {
             subtitle="Tüm teslimat kayıtları ve geçmiş düzeltmeleri"
             onPress={() => router.push('/records')}
           />
+          <SettingsTile
+            icon={MailIcon}
+            title="E-posta Raporları"
+            subtitle="Zamanlanmış PDF raporları ve alıcılar"
+            onPress={() => router.push('/email-reports')}
+          />
         </VStack>
       </VStack>
+      </ScrollView>
     </Box>
   );
 }

@@ -94,6 +94,7 @@ export function SummaryScreen() {
       </Box>
 
       <ExportSheet
+        reportType="summary"
         isOpen={pdf.isOpen}
         onClose={pdf.close}
         state={pdf.state}
@@ -101,6 +102,7 @@ export function SummaryScreen() {
         contents={SUMMARY_CONTENTS}
         configSlot={<ReportFilterConfig onCreate={(filters) => void pdf.trigger({ range, filters })} />}
         onShare={() => void pdf.share()}
+        onReturnToFilters={pdf.reset}
         onRetry={pdf.retry}
       />
 

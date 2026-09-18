@@ -9,6 +9,7 @@ import {
   supabasePaymentRepository,
   supabaseProductRepository,
   supabaseReportsRepository,
+  supabaseReportEmailRepository,
   supabaseSessionRepository,
 } from './supabase';
 
@@ -24,6 +25,7 @@ export type {
   AdminLocationRepository,
   AnalyticsRepository,
   ReportsRepository,
+  ReportEmailRepository,
 } from './contracts';
 
 export { buildReceiptSummary } from './receiptSummary';
@@ -40,4 +42,5 @@ export const services: AppServices = {
   adminLocations: supabaseAdminLocationRepository,
   analytics: supabaseAnalyticsRepository,
   reports: supabaseReportsRepository,
+  reportEmail: supabaseReportEmailRepository,
 };

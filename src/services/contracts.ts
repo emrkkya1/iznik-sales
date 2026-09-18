@@ -31,6 +31,11 @@ import type {
   SetBranchProductPriceInput,
   SummaryKpis,
   SummaryRange,
+  ReportScheduleMode,
+  ReportRecipient,
+  ReportEmailSettings,
+  SendReportEmailInput,
+  SendReportEmailResult,
   UpdateDeliveryInput,
   User,
 } from '@/types';
@@ -145,6 +150,15 @@ export interface AnalyticsRepository {
   getBranchesReport(filters: BranchAnalyticsFilters & Pick<PdfReportFilters, 'productIds'>): Promise<BranchReportSnapshot>;
 }
 
+export interface ReportEmailRepository {
+  getSettings(): Promise<ReportEmailSettings>;
+  listRecipients(): Promise<ReportRecipient[]>;
+  addRecipient(email: string): Promise<string>;
+  removeRecipient(id: string): Promise<void>;
+  setScheduleMode(mode: ReportScheduleMode): Promise<void>;
+  sendManualReport(input: SendReportEmailInput): Promise<SendReportEmailResult>;
+}
+
 export type PdfReportFilters = {
   dateFrom?: string | null;
   dateTo?: string | null;
@@ -163,4 +177,5 @@ export interface AppServices {
   adminLocations: AdminLocationRepository;
   reports: ReportsRepository;
   analytics: AnalyticsRepository;
+  reportEmail: ReportEmailRepository;
 }

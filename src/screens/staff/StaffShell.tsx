@@ -10,7 +10,7 @@ import { HStack } from '@/components/ui/hstack';
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { NetworkBanner } from '@/components/ui/network-banner';
-import { Icon, ClockIcon, HomeIcon, UserIcon } from '@/components/ui/icon';
+import { ChevronDownIcon, Icon, ClockIcon, HomeIcon, UserIcon } from '@/components/ui/icon';
 import { useSignOut } from '@/hooks/useSignOut';
 import { useAuthStore } from '@/store';
 import { formatDateForDisplay, getIstanbulToday } from '@/utils/dates';
@@ -61,17 +61,24 @@ export function StaffShell({ children }: StaffShellProps) {
             </Text>
             <Pressable
               onPress={() => setConfirmOpen(true)}
-              className="items-center justify-center"
+              accessibilityRole="button"
+              accessibilityLabel="Hesap menüsünü aç"
+              accessibilityHint="Çıkış seçeneğini açar"
+              hitSlop={8}
+              className="rounded-full border border-border bg-card p-1"
             >
-              <Box className="h-8 w-8 items-center justify-center rounded-full bg-accent">
-                {user?.fullName ? (
-                  <Text size="xs" bold className="text-accent-foreground">
-                    {initials(user.fullName)}
-                  </Text>
-                ) : (
-                  <Icon as={UserIcon} size="sm" className="text-muted-foreground" />
-                )}
-              </Box>
+              <HStack space="xs" className="items-center">
+                <Box className="h-8 w-8 items-center justify-center rounded-full bg-accent">
+                  {user?.fullName ? (
+                    <Text size="xs" bold className="text-accent-foreground">
+                      {initials(user.fullName)}
+                    </Text>
+                  ) : (
+                    <Icon as={UserIcon} size="sm" className="text-muted-foreground" />
+                  )}
+                </Box>
+                <Icon as={ChevronDownIcon} size="2xs" className="mr-1 text-muted-foreground" />
+              </HStack>
             </Pressable>
           </HStack>
         </HStack>

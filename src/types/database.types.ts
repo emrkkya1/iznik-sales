@@ -687,6 +687,17 @@ export type Database = {
         }
         Returns: Json
       }
+      get_report_email_settings: { Args: never; Returns: Json }
+      list_report_recipients: { Args: never; Returns: Json }
+      upsert_report_recipient: {
+        Args: { p_email: string; p_is_enabled?: boolean }
+        Returns: string
+      }
+      delete_report_recipient: { Args: { p_id: string }; Returns: undefined }
+      set_report_schedule_mode: {
+        Args: { p_mode: 'weekly' | 'monthly' | 'disabled' }
+        Returns: undefined
+      }
       set_branch_active: {
         Args: { p_branch_id: string; p_is_active: boolean }
         Returns: undefined
@@ -733,7 +744,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      report_schedule_mode: 'weekly' | 'monthly' | 'disabled'
     }
     CompositeTypes: {
       [_ in never]: never
@@ -863,6 +874,8 @@ export const Constants = {
     Enums: {},
   },
   public: {
-    Enums: {},
+    Enums: {
+      report_schedule_mode: ['weekly', 'monthly', 'disabled'],
+    },
   },
 } as const

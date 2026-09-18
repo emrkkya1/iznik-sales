@@ -8,3 +8,4 @@ export { supabaseLedgerRepository } from './ledger';
 export { supabaseAdminLocationRepository } from './adminLocations';
 export { supabaseAnalyticsRepository } from './analytics';
 export { supabaseReportsRepository } from './reports';
+export { supabaseReportEmailRepository } from './reportEmail';

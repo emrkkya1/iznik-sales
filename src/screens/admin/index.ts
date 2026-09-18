@@ -5,4 +5,5 @@ export { BranchesTableScreen } from './BranchesTableScreen';
 export { CitiesScreen } from './CitiesScreen';
 export { ProductsScreen } from './ProductsScreen';
 export { SettingsScreen } from './SettingsScreen';
+export { EmailReportsSettingsScreen } from './EmailReportsSettingsScreen';
 export { SummaryScreen } from './SummaryScreen';

@@ -250,6 +250,22 @@ const MailIcon = createIcon({
 MailIcon.displayName = 'MailIcon';
 export { MailIcon };
 
+const ShareIcon = createIcon({
+  Root: Svg,
+  viewBox: '0 0 24 24',
+  path: (
+    <>
+      <Circle cx="18" cy="5" r="3" strokeWidth="2" />
+      <Circle cx="6" cy="12" r="3" strokeWidth="2" />
+      <Circle cx="18" cy="19" r="3" strokeWidth="2" />
+      <Line x1="8.6" y1="10.5" x2="15.4" y2="6.5" strokeWidth="2" strokeLinecap="round" />
+      <Line x1="8.6" y1="13.5" x2="15.4" y2="17.5" strokeWidth="2" strokeLinecap="round" />
+    </>
+  ),
+});
+ShareIcon.displayName = 'ShareIcon';
+export { ShareIcon };
+
 const SearchIcon = createIcon({
   Root: Svg,
   viewBox: '0 0 24 24',
