@@ -2,7 +2,7 @@
   "expo": {
     "name": "Tarihi Iznik Firini",
     "slug": "tarihi-iznik-firini-sales",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "landscape",
     "icon": "./assets/images/iznik-firin-logo.jpg",
     "scheme": "tarihiiznikfirinisales",
