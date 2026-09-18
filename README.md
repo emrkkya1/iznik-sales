@@ -1,206 +1,199 @@
 # Tarihi İznik Fırını Satış Uygulaması
 
-Tarihi İznik Fırını için hazırlanmış yatay Android tablet uygulamasıdır. Şube teslimatlarını, iadeleri ve tahsilatları kaydeder; bakiye, ürün ve şube raporları üretir. Yetkili kullanıcılar PDF raporu dışa aktarabilir veya e-posta ile gönderebilir.
+Bu uygulama, fırının şubelere yaptığı teslimatları, iadeleri, tahsilatları ve bakiyeleri Android tablet üzerinden takip etmesi içindir. Personel günlük hareketleri kaydeder; yönetici şube, ürün, fiyat ve raporları yönetir.
 
-## Kimin için?
+Bu sayfa, teknik bilgisi sınırlı bir kişinin yeni bir işletme kurulumu yapabilmesi için sırayla yazılmıştır. Adımları atlamayın ve gizli değerleri yalnızca parola yöneticinizde veya GitHub Secrets bölümünde saklayın.
 
-- **Personel:** Teslimat, iade ve tahsilat girişi yapar; kendi hareketlerini görür.
-- **Yönetici:** Şube, ürün ve fiyatları yönetir; bakiye ve raporları inceler.
+## Başlamadan önce
 
-Ana hedef Android tablettir. Web ve iOS yalnızca geliştirme/test kolaylığı sağlar.
+Şunlara ihtiyacınız var:
 
-## Yeni kurulum: fork ile başlayın
+- GitHub hesabı: Kod ve otomatik işlemler burada bulunur.
+- Supabase hesabı: Uygulamanın veritabanı ve kullanıcı hesapları burada bulunur.
+- Bir bilgisayar ve internet bağlantısı.
+- İlk kullanıcıları belirlemek için iki e-posta adresi ve iki güçlü parola: bir yönetici, bir personel.
 
-Yeni bir işletme veya bağımsız kurulum için bu depoyu **fork etmek** en doğru yoldur. Fork, kaynak deponun kendi GitHub hesabınızdaki kopyasıdır. Böylece kendi veritabanınız, anahtarlarınız ve APK yayınlarınız size ait olur; kaynak projeyi etkilemezsiniz.
+E-posta ile rapor gönderimi ve APK bağlantısını e-posta ile paylaşmak bu ilk kurulum için zorunlu değildir. Bunları en son, alan adı doğrulandıktan sonra açabilirsiniz.
 
-1. [GitHub](https://github.com/) hesabınızla bu projenin sayfasını açın.
-2. Sağ üstten **Fork** düğmesine basın ve kendi hesabınızı seçin.
-3. Fork tamamlandığında **Code → HTTPS** adresini kopyalayın.
-4. Bilgisayarınızda Terminal veya PowerShell açıp çalıştırın:
+> Önemli: Parola, token veya API anahtarını sohbet, e-posta, WhatsApp, ekran görüntüsü ya da GitHub kod dosyasında paylaşmayın. Bunları yalnızca GitHub'ın **Secrets** alanına girin.
 
-```bash
-git clone https://github.com/KULLANICI_ADINIZ/DEPO_ADINIZ.git
-cd DEPO_ADINIZ
-```
+## Bu depodaki beş otomasyon ne işe yarar?
 
-Bu rehber, fork sonrası sıfırdan üretim kurulumu içindir. Komutları uygulayacak kişinin bilgisayarda yönetici yetkisi ve GitHub/Supabase hesaplarına erişimi olmalıdır.
+GitHub Actions sayfasında beş satır görmek normaldir. Her biri ayrı bir işi güvenli biçimde yapar.
 
-## Kullanılan teknoloji
+| İş akışı | Ne zaman çalışır? | Sizin yapmanız gereken |
+|---|---|---|
+| **CI** | `main`e kod gönderilince ve pull request açılınca | Hata varsa düzeltin. |
+| **Deploy production** | `main`e kod gönderilince veya elle | Supabase veritabanını ve sunucu fonksiyonlarını günceller. |
+| **Build and release APK** | `main`e kod gönderilince veya elle | Android APK oluşturur ve GitHub Releases sayfasına koyar. |
+| **Bootstrap remote** | Yalnızca elle | İlk yönetici/personel hesaplarını oluşturur. İlk kurulumda bir kez kullanılır. |
+| **Scheduled reports** | Haftalık ve aylık zamanlarda | E-posta raporlarını gönderir. E-posta kurulana kadar atlanır. |
 
-| Araç | Basit açıklama |
+`CI`, `Deploy production` ve `Build and release APK` aynı `main` gönderiminde paralel başlayabilir. Deploy kendi testlerini de çalıştırdığı için veritabanına hatalı değişiklik göndermeden önce kontrol yapar. APK işi ise Supabase e-posta ayarlarına bağlı değildir.
+
+## Sıfırdan kurulum
+
+### 1. Depoyu kendi hesabınıza kopyalayın
+
+1. GitHub'da bu projenin sayfasını açın.
+2. Sağ üstteki **Fork** düğmesine basın.
+3. Kendi GitHub hesabınızı seçin ve **Create fork** deyin.
+4. Bundan sonra kurulum boyunca kendi fork'unuzdaki sayfaları kullanın.
+
+Fork, projenin kendi hesabınızdaki bağımsız kopyasıdır. Kendi Supabase projeniz, gizli anahtarlarınız ve APK yayınlarınız yalnızca bu kopyaya ait olur.
+
+### 2. Supabase'de boş proje oluşturun
+
+1. [Supabase Dashboard](https://supabase.com/dashboard) açın ve giriş yapın.
+2. **New project** düğmesine basın.
+3. Kuruluşunuzu seçin, projeye anlaşılır bir ad verin ve size yakın bir bölge seçin.
+4. Güçlü bir **Database Password** oluşturun. Bu parolayı parola yöneticinize kaydedin; birazdan GitHub'a ekleyeceksiniz.
+5. Proje hazır olana kadar bekleyin.
+
+Supabase projenizin adresi `https://xxxxxxxxxxxxxxxxxxxx.supabase.co` biçimindedir. Ortadaki harf-rakam grubu sizin **Project Ref** değerinizdir.
+
+### 3. Supabase'den gerekli bilgileri toplayın
+
+Tarayıcıda Supabase projeniz açıkken aşağıdaki değerleri bulun. Henüz hiçbirini kaynak koda yapıştırmayın.
+
+| GitHub'da kullanılacak ad | Nereden alınır? | Not |
+|---|---|---|
+| `EXPO_PUBLIC_SUPABASE_URL` | **Connect** ekranındaki Project URL | Uygulamanın bağlanacağı adres. |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | **Connect** ekranındaki Publishable key; eski projelerde anon key | Mobil uygulama bağlantı anahtarı. |
+| `SUPABASE_PROJECT_REF` | Proje URL'sindeki `https://REF.supabase.co` içindeki `REF` | Gizli değildir. |
+| `SUPABASE_DB_PASSWORD` | 2. adımda oluşturduğunuz Database Password | Gizlidir. |
+| `SUPABASE_ACCESS_TOKEN` | Supabase hesabı → **Access Tokens** → **Generate new token** | Gizlidir; tokenı yalnızca bir kez görebilirsiniz. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Proje → **Settings** → **API** → service role / secret key | Gizlidir; yalnızca ilk kullanıcıları oluşturmak ve zamanlanmış raporlar için kullanılır. |
+
+### 4. GitHub'da korumalı üretim ortamını oluşturun
+
+1. Fork'unuzda **Settings** → **Environments** bölümünü açın.
+2. **New environment** düğmesine basın.
+3. Ad olarak tam biçimde `production` yazın ve oluşturun.
+4. İsterseniz burada yayından önce onay isteyecek bir kural ekleyin. İlk kurulumda zorunlu değildir.
+
+Bu ortam, canlı Supabase projesine yapılacak işlemleri ayırmak içindir.
+
+### 5. GitHub Secrets ve Variables değerlerini girin
+
+Fork'unuzda **Settings** → **Secrets and variables** → **Actions** sayfasını açın.
+
+Bu rehberdeki tüm değerleri **Repository secrets** veya **Repository variables** olarak ekleyin. Böylece hem APK işi hem de Supabase deploy işi aynı değerleri güvenle kullanabilir.
+
+#### 5A. Önce zorunlu secrets değerlerini ekleyin
+
+**Secrets** sekmesine girin. Her satır için **New repository secret** düğmesine basın, adı aynen yazın ve ilgili değeri girin.
+
+| Secret adı | Değer |
 |---|---|
-| Expo + React Native | Android tablet uygulamasını oluşturur. |
-| Supabase | Kullanıcı hesaplarını ve satış verilerini güvenli biçimde barındırır. |
-| GitHub | Kodun saklandığı ve ekip çalışmasının yapıldığı yerdir. |
-| GitHub Actions | Otomatik test, veritabanı yayını ve APK üretimini yapar. |
-| Resend (isteğe bağlı) | Raporların e-posta ile gönderilmesini sağlar. |
+| `EXPO_PUBLIC_SUPABASE_URL` | 3. adımdaki Project URL |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | 3. adımdaki Publishable/anon key |
+| `SUPABASE_ACCESS_TOKEN` | 3. adımdaki Access Token |
+| `SUPABASE_DB_PASSWORD` | Supabase projesinin Database Password değeri |
+| `SUPABASE_SERVICE_ROLE_KEY` | 3. adımdaki service-role/secret key |
+| `BOOTSTRAP_ADMIN_EMAIL` | İlk yöneticinin e-posta adresi |
+| `BOOTSTRAP_ADMIN_PASSWORD` | İlk yönetici için güçlü parola |
+| `BOOTSTRAP_STAFF_EMAIL` | İlk personelin e-posta adresi |
+| `BOOTSTRAP_STAFF_PASSWORD` | İlk personel için güçlü parola |
 
-## Kurulum haritası
+#### 5B. Zorunlu variable değerini ekleyin
 
-1. GitHub fork oluşturun.
-2. Supabase'de boş bir üretim projesi açın.
-3. Gerekli değerleri GitHub Secrets ve Variables bölümüne ekleyin.
-4. Veritabanı ve sunucu fonksiyonlarını yayınlayın.
-5. Sürümü artırıp `main` dalına gönderin.
-6. GitHub'ın oluşturduğu APK'yı tabletinize kurun.
+**Variables** sekmesine girin ve aşağıdaki değeri ekleyin:
 
-Yalnızca geliştirme yapmak isteyenler [Yerel geliştirme](#yerel-geliştirme) bölümüne geçebilir.
-
-## 1. Supabase hesabı ve üretim projesi
-
-Supabase, uygulamanın veritabanı ve giriş sistemi olarak çalışır.
-
-1. [Supabase Dashboard](https://supabase.com/dashboard) hesabı açın veya oturum açın.
-2. **New project** seçin.
-3. Kurumunuzu, anlaşılır proje adını ve size yakın bölgeyi seçin.
-4. Güçlü bir veritabanı parolası oluşturun. Bu parolayı güvenilir parola yöneticinize kaydedin.
-5. Proje hazır olduğunda proje adresindeki `https://REF.supabase.co` biçiminde görünen `REF` değerini not edin. Bu değer **Project Ref**'tir.
-
-> Veritabanı parolasını, erişim token'larını ve gizli API anahtarlarını e-posta, sohbet, ekran görüntüsü veya kaynak kod ile paylaşmayın.
-
-### Uygulama bağlantı bilgileri
-
-Supabase projesinde **Connect** ekranını açın. Şunları alın:
-
-- **Project URL** → `EXPO_PUBLIC_SUPABASE_URL`
-- **Publishable key** (eski projelerde `anon key`) → `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-
-## 2. GitHub ayarları
-
-Fork'unuzda **Settings → Environments → New environment** yolundan `production` adlı ortamı oluşturun. İsterseniz yayın öncesi manuel onay kuralı ekleyin.
-
-Sonra **Settings → Secrets and variables → Actions** sayfasını açın.
-
-- **Secrets:** Parola, token ve anahtarlar içindir; değerler sonradan görüntülenemez.
-- **Variables:** Gizli olmayan ayarlar içindir.
-
-### APK üretimi için gerekenler
-
-Bunları **repository secret** olarak ekleyin. APK iş akışı `production` ortamını kullanmaz.
-
-| Tür | Ad | Değerin kaynağı |
-|---|---|---|
-| Secret | `EXPO_PUBLIC_SUPABASE_URL` | Supabase Connect ekranındaki Project URL |
-| Secret | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Supabase Connect ekranındaki Publishable/anon key |
-
-### Veritabanını üretime yayınlamak için gerekenler
-
-Bunları `production` ortamında ekleyin.
-
-| Tür | Ad | Nasıl alınır? |
-|---|---|---|
-| Secret | `SUPABASE_ACCESS_TOKEN` | Supabase Account → Access Tokens bölümünden yeni token oluşturun. Mümkünse yalnızca bu proje için sınırlandırın. |
-| Secret | `SUPABASE_DB_PASSWORD` | Proje oluştururken belirlediğiniz veritabanı parolasıdır. Unuttuysanız Supabase Database → Settings ekranından yenileyin. |
-| Variable | `SUPABASE_PROJECT_REF` | `https://REF.supabase.co` içindeki `REF` değeridir. |
-
-### E-posta raporları
-
-E-posta raporları isteğe bağlıdır. Alan adı ve e-posta ayarları henüz hazır değilse normal üretim yayını, veritabanı migration'ları ve APK üretimi devam eder; e-posta ayarları yalnızca atlanır. E-posta Function'ları yine yayımlanır, ancak ayarlar tamamlanana kadar e-posta göndermeyi denemek anlaşılır bir yapılandırma hatası döndürür.
-
-E-posta raporlarını etkinleştirmek istediğinizde:
-
-1. [Resend](https://resend.com/) hesabı oluşturun.
-2. **Domains** bölümünden kendi alan adınızı ekleyin.
-3. Resend'in gösterdiği SPF ve DKIM DNS kayıtlarını alan adı sağlayıcınıza girin; doğrulama tamamlanana kadar bekleyin.
-4. **API Keys** bölümünden yalnızca gönderme yetkili, mümkünse alan adıyla sınırlı bir anahtar oluşturun.
-5. GitHub → **Settings** → **Secrets and variables** → **Actions** bölümünde `production` ortamına şu secret'ları ekleyin:
-
-| Ad | Değer |
+| Variable adı | Değer |
 |---|---|
-| `RESEND_API_KEY` | Resend'in bir kez gösterdiği API anahtarı |
-| `REPORTS_FROM_EMAIL` | Örnek: `Tarihi İznik Fırını <raporlar@alanadiniz.com>`; doğrulanmış alan adı kullanılmalıdır. |
+| `SUPABASE_PROJECT_REF` | 3. adımdaki Project Ref |
 
-6. Aynı ekranda **Variables** sekmesinden `EMAIL_REPORTS_ENABLED` adlı değeri tam olarak `true` yapın. Bu değişken yoksa veya `true` değilse e-posta secret'ları hiç kullanılmaz ve deploy başarısız olmaz.
+İlk kurulum için başka variable eklemeyin. Özellikle e-posta ile ilgili `true` değerlerini henüz eklemeyin.
 
-### İsteğe bağlı bilgiler
+### 6. Veritabanını canlı Supabase projenize kurun
 
-`SUPABASE_SERVICE_ROLE_KEY`, `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD`, `BOOTSTRAP_STAFF_EMAIL` ve `BOOTSTRAP_STAFF_PASSWORD` yalnızca ilk uzaktan veri yükleme veya planlı rapor e-postaları için gerekir. Normal APK üretimi ve standart üretim yayını için gerekli değildir. Planlı raporları ayrıca açmak için `SCHEDULED_REPORTS_ENABLED` variable'ını `true` yapın; bu değer yoksa zamanlanmış iş bilinçli olarak atlanır.
+1. GitHub'da fork'unuzun **Actions** sekmesini açın.
+2. Soldan **Deploy production** iş akışını seçin.
+3. **Run workflow** → **Run workflow** düğmesine basın.
+4. İşlem bitene kadar bekleyin. Yeşil onay işareti görmeniz gerekir.
 
-## 3. Uygulama kimliğini uyarlama
+Bu işlem tabloları, güvenlik kurallarını ve uygulamanın kullandığı Supabase Function'larını kurar. E-posta ayarları yapılmadıysa e-posta kısmı bilinçli olarak atlanır; bu bir hata değildir.
 
-Yeni bağımsız kurulumda `app.json` dosyasındaki şu alanları kendi markanıza göre değiştirin:
+### 7. İlk yönetici ve personel hesabını oluşturun
 
-- `name` ve `slug`
-- `android.package`
-- `ios.bundleIdentifier`
-- Uygulama simgesi ve açılış görseli
+1. GitHub **Actions** sayfasında **Bootstrap remote** iş akışını seçin.
+2. **Run workflow** düğmesine basın.
+3. `profile` alanını değiştirmeyin.
+4. `confirm_project_ref` alanına 3. adımda not ettiğiniz Project Ref değerini eksiksiz yazın.
+5. **Run workflow** düğmesine basın ve yeşil onayı bekleyin.
 
-Android paket adı benzersiz olmalıdır; örnek: `com.sirketiniz.satis`. Sonradan değişmesi Android açısından yeni bir uygulama anlamına gelir.
+Bu işlem 5A adımında girdiğiniz yönetici ve personel hesaplarını oluşturur. Ayrıca 16 temel ürünü, 8 şehirdeki 82 şubeyi, tüm ürün-şube eşleşmelerini ve başlangıç fiyatlarını ekler. Açılış bakiyeleri sıfırdır; teslimat, iade, tahsilat veya demo finansal hareket eklenmez.
 
-## 4. İlk üretim yayını
+### 8. İlk APK'yı oluşturun ve tablete kurun
 
-GitHub Actions veritabanı şemasını ve e-posta Function'larını yayımlar.
+1. GitHub **Actions** sayfasında **Build and release APK** iş akışını seçin.
+2. **Run workflow** → **Run workflow** düğmesine basın.
+3. İşlem tamamlanınca GitHub'da **Releases** bölümünü açın.
+4. En yeni sürümdeki `iznik-firini-release-v...apk` dosyasını Android tablete indirin.
+5. Android izin sorarsa bu tarayıcı/dosya yöneticisi için uygulama yükleme izni verin.
+6. APK'yı açıp kurun; ardından 7. adımda oluşturduğunuz yönetici hesabıyla giriş yapın.
 
-1. GitHub'da **Actions** sekmesini açın.
-2. **Deploy production** iş akışını seçin.
-3. **Run workflow** düğmesine basın.
-4. İşlem başarıyla bittiğinde Supabase'de tablolar, yetkiler ve rapor fonksiyonları kurulmuş olur.
+APK oluşturmak için Resend, alan adı veya e-posta ayarları gerekmez.
 
-Başlangıç örnek verileri ve ilk kullanıcı hesapları uzaktan yüklenecekse, isteğe bağlı sırları ekledikten sonra **Bootstrap remote** iş akışını manuel çalıştırın. İstenen Project Ref değerini aynen yazın; bu güvenlik kontrolü yanlış veritabanına işlem yapılmasını önler.
+### 9. Sonraki güncellemelerde APK çıkarma
 
-## 5. APK oluşturma ve tablete kurma
+Yeni özellik veya hata düzeltmesi içeren her APK için `app.json` dosyasında iki sayıyı artırın:
 
-APK almak için Google Play hesabı gerekmez.
+- `expo.version`: örneğin `1.0.2` → `1.0.3`
+- `android.versionCode`: örneğin `2` → `3`
 
-1. `app.json` içindeki `expo.version` değerini artırın: örneğin `1.0.1` → `1.0.2`.
-2. Değişikliği `main` dalına gönderin.
-3. GitHub → **Actions** → **Build and release APK** iş akışını açın.
-4. İş başarıyla tamamlanınca GitHub → **Releases** sayfasında sürüm yayınını açın.
-5. `.apk` dosyasını Android tablete indirin.
-6. Android uyarı verirse, bu kaynak için uygulama yükleme izni verin ve APK'yı kurun.
+Sonra değişikliği `main` dalına gönderin. Yeni sürüm için APK otomatik başlar. Aynı sürüm numarasıyla ikinci GitHub Release oluşturulmaz; bu koruma eski APK'nın yanlışlıkla ezilmesini önler.
 
-Her sürüm numarası yalnızca bir kez yayımlanabilir. Yeni APK için sürümü yeniden artırın.
+## E-posta özelliklerini sonradan açma
 
-### APK bağlantısını e-posta ile gönderme (isteğe bağlı)
+Bu bölüm ilk APK kurulup uygulama çalıştıktan sonra yapılmalıdır.
 
-APK dosyaları e-posta ek boyutu sınırını aşabildiği için iş akışı dosyayı ek olarak göndermez; bunun yerine herkese açık GitHub Release indirme bağlantısını e-postalar. Açmak için önce Resend alan adı doğrulamasını tamamlayın, sonra şunları ekleyin:
+### Uygulama içinden rapor e-postası göndermek
 
-| Tür | Ad | Değer |
-|---|---|---|
-| Secret | `RESEND_API_KEY` | Resend API anahtarı |
-| Secret | `REPORTS_FROM_EMAIL` | Doğrulanmış gönderen adresi |
-| Secret | `APK_RELEASE_RECIPIENT_EMAIL` | APK bağlantısının gönderileceği e-posta adresi |
-| Variable | `SEND_APK_BY_EMAIL` | Tam olarak `true` |
+1. [Resend](https://resend.com/) hesabı açın.
+2. Resend → **Domains** alanından size ait bir domain ekleyin; örneğin `tarihiiznikfirini.com`.
+3. Resend'in gösterdiği DNS kayıtlarını domaini yöneten firmadaki DNS paneline ekleyin.
+4. Resend domaini **Verified** gösterene kadar bekleyin.
+5. Resend → **API Keys** alanından gönderme yetkili bir anahtar oluşturun.
+6. GitHub **Secrets** sekmesine şunları ekleyin:
 
-Bu variable yoksa veya `true` değilse APK yine oluşturulur ve Release'e eklenir; e-posta adımı tamamen atlanır.
+| Secret adı | Örnek değer |
+|---|---|
+| `RESEND_API_KEY` | Resend'in oluşturduğu API anahtarı |
+| `REPORTS_FROM_EMAIL` | `Tarihi İznik Fırını <raporlar@alanadiniz.com>` |
 
-## Günlük kullanım
+7. GitHub **Variables** sekmesine `EMAIL_REPORTS_ENABLED` adında, değeri tam olarak `true` olan bir variable ekleyin.
+8. **Deploy production** iş akışını bir kez elle çalıştırın.
 
-1. Uygulamayı tablet üzerinde açın ve size tanımlanmış hesapla giriş yapın.
-2. Personel, teslimat/iade/tahsilat bilgilerini kaydeder.
-3. Yönetici, şube ve ürün tanımlarını günceller; raporları inceler.
-4. İnternet yokken bağlantı uyarısını dikkate alın; finansal kaydın sunucuya ulaştığını varsaymayın.
+### Zamanlanmış haftalık/aylık raporlar
 
-## Yerel geliştirme
+Uygulama içi rapor e-postası çalıştıktan sonra GitHub **Variables** sekmesine `SCHEDULED_REPORTS_ENABLED` = `true` ekleyin. Bu değer yoksa zamanlanmış iş atlanır; boş veya hatalı e-posta gönderimi denemez.
 
-Bu bölüm uygulamayı değiştirecek geliştiriciler içindir.
+### Yeni APK bağlantısını e-posta ile göndermek
 
-### Gerekenler
+APK dosyası e-posta ek sınırını aşabileceği için sistem dosyayı ek olarak göndermez. Bunun yerine GitHub Release'deki APK indirme bağlantısını e-postalar.
 
-- Node.js 22 veya üzeri
-- Git
-- Docker Desktop
-- Android Studio ve Android SDK (emülatör için)
-- Supabase CLI
+1. Yukarıdaki Resend kurulumunu bitirin.
+2. GitHub **Secrets** sekmesine `APK_RELEASE_RECIPIENT_EMAIL` ekleyin. Değer, APK bağlantısını alacak e-posta adresidir.
+3. GitHub **Variables** sekmesine `SEND_APK_BY_EMAIL` = `true` ekleyin.
+4. Bir sonraki yeni APK sürümünde bağlantı otomatik gönderilir.
 
-### Çalıştırma
+`SEND_APK_BY_EMAIL` yoksa veya `true` değilse APK yine oluşturulur; yalnızca e-posta adımı atlanır.
+
+## Yerel geliştirme (yalnızca geliştiriciler için)
+
+Uygulama kodunu değiştirecek kişiler için gerekenler: Node.js 22+, Git, Docker Desktop, Android Studio ve Supabase CLI.
 
 ```bash
 npm ci
 cp .env.example .env
-```
-
-`.env` içindeki Supabase URL ve publishable anahtarını kendi projenizin değerleriyle değiştirin.
-
-```bash
 npm run db:start
 npm run db:reset
 npm start
 ```
 
-Android emülatörde açmak için terminalde `a` tuşuna basın veya `npm run android` çalıştırın.
-
-### Kalite kontrolleri
+Yerel kalite kontrolleri:
 
 ```bash
 npm run typecheck
@@ -209,25 +202,14 @@ npm test
 npm run test:db
 ```
 
-Tüm kontroller için `npm run test:all` kullanılabilir. Yerel test hesapları yalnızca geliştirme içindir; üretimde kullanılmamalıdır.
+Hepsini tek seferde çalıştırmak için `npm run test:all` kullanın. Yerel test veritabanı üretim Supabase projesinden ayrıdır.
 
-## Otomatik işler
+## Güvenlik ve bakım
 
-| İş akışı | Ne zaman? | Görevi |
-|---|---|---|
-| CI | `main` gönderimi ve pull request | Kod kalitesi, tip ve test kontrolleri |
-| Deploy production | `main` gönderimi veya manuel | Veritabanı, Function ve e-posta ayarlarını yayımlar |
-| Build and release APK | `main` gönderimi veya manuel | Android APK oluşturur ve GitHub Release'e ekler |
-| Scheduled reports | Pazartesi ve ayın ilk günü | Tanımlı raporları e-posta ile yollar |
-| Bootstrap remote | Sadece manuel | İlk örnek veri ve hesapları yükler |
-
-## Güvenlik kuralları
-
-- `.env` dosyasını, veritabanı parolasını veya gizli anahtarları Git'e eklemeyin.
-- Gizli değerleri yalnızca GitHub Secrets veya güvenilir parola yöneticisinde tutun.
-- Service-role anahtarı satır düzeyi güvenliği atlar; mobil uygulamaya asla koymayın.
-- Deneme ve üretim için ayrı Supabase projeleri kullanın.
-- Bir anahtar sızarsa hizmet panelinden hemen yenileyin ve GitHub Secret değerini güncelleyin.
+- Deneme ve canlı kullanım için ayrı Supabase projeleri kullanın.
+- `SUPABASE_SERVICE_ROLE_KEY` mobil uygulamaya veya `.env` dosyası dışında bir yere konmamalıdır.
+- Bir anahtar sızarsa ilgili hizmetten hemen yenileyin; ardından GitHub Secret değerini güncelleyin.
+- Fork kullanıyorsanız genel hata düzeltmelerini ana projeden düzenli olarak alın; müşteriye özel değişiklikleri kendi fork'unuzda tutun.
 
 ## Bağlantılar
 
@@ -235,7 +217,3 @@ Tüm kontroller için `npm run test:all` kullanılabilir. Yerel test hesapları 
 - [Supabase belgeleri](https://supabase.com/docs)
 - [GitHub Actions belgeleri](https://docs.github.com/actions)
 - [Resend belgeleri](https://resend.com/docs)
-
-## Lisans
-
-[LICENSE](LICENSE) dosyasına bakın.
