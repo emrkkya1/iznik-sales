@@ -412,6 +412,7 @@ export function BranchesTableScreen() {
       />
 
       <ExportSheet
+        reportType="branches"
         isOpen={report.isOpen}
         onClose={report.close}
         state={report.state}
@@ -428,6 +429,7 @@ export function BranchesTableScreen() {
           productIds: filters.productIds ?? undefined,
         })} />}
         onShare={() => void report.share()}
+        onReturnToFilters={report.reset}
         onRetry={report.retry}
       />
 

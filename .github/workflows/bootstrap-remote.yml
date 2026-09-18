@@ -1,0 +1,52 @@
+name: Bootstrap remote
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Bootstrap profile path
+        required: true
+        default: supabase/bootstrap/production-defaults.json
+      confirm_project_ref:
+        description: Type the exact target project ref
+        required: true
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - uses: supabase/setup-cli@v1
+        with: { version: latest }
+      - run: npm ci
+      - name: Guard target
+        env:
+          EXPECTED: ${{ vars.SUPABASE_PROJECT_REF }}
+          ACTUAL: ${{ inputs.confirm_project_ref }}
+        run: test "$EXPECTED" = "$ACTUAL"
+      - name: Apply schema and functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+        run: |
+          supabase link --project-ref "$PROJECT_REF"
+          supabase db push
+          supabase secrets set --project-ref "$PROJECT_REF" RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}" REPORTS_FROM_EMAIL="${{ secrets.REPORTS_FROM_EMAIL }}"
+          supabase functions deploy send-report-email deliver-scheduled-report --project-ref "$PROJECT_REF"
+      - name: Seed selected baseline profile
+        env:
+          SUPABASE_URL: https://${{ vars.SUPABASE_PROJECT_REF }}.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BOOTSTRAP_ADMIN_EMAIL: ${{ secrets.BOOTSTRAP_ADMIN_EMAIL }}
+          BOOTSTRAP_ADMIN_PASSWORD: ${{ secrets.BOOTSTRAP_ADMIN_PASSWORD }}
+          BOOTSTRAP_STAFF_EMAIL: ${{ secrets.BOOTSTRAP_STAFF_EMAIL }}
+          BOOTSTRAP_STAFF_PASSWORD: ${{ secrets.BOOTSTRAP_STAFF_PASSWORD }}
+        run: node scripts/bootstrap-remote.mjs "${{ inputs.profile }}"

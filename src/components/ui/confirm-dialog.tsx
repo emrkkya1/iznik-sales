@@ -1,4 +1,5 @@
 import { Modal, Pressable } from 'react-native';
+import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
 import { Box } from './box';
 import { Button, ButtonText } from './button';
@@ -31,39 +32,43 @@ export function ConfirmDialog({
     <Modal
       transparent
       visible={open}
-      animationType="fade"
+      animationType="none"
       onRequestClose={onCancel}
     >
-      <Pressable
-        className="flex-1 items-center justify-center bg-black/50 p-8"
-        onPress={onCancel}
-      >
-        <Pressable onPress={(e) => e.stopPropagation()}>
-          <Box className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <VStack space="md">
-              <Text size="lg" bold className="text-foreground">
-                {title}
-              </Text>
-              {message ? (
-                <Text size="sm" className="text-muted-foreground">
-                  {message}
-                </Text>
-              ) : null}
-              <HStack space="sm" className="justify-end">
-                <Button variant="outline" onPress={onCancel}>
-                  <ButtonText>{cancelLabel}</ButtonText>
-                </Button>
-                <Button
-                  variant={destructive ? 'destructive' : 'default'}
-                  onPress={onConfirm}
-                >
-                  <ButtonText>{confirmLabel}</ButtonText>
-                </Button>
-              </HStack>
-            </VStack>
-          </Box>
+      <Animated.View entering={FadeIn.duration(160)} style={{ flex: 1 }}>
+        <Pressable
+          className="flex-1 items-center justify-center bg-black/50 p-8"
+          onPress={onCancel}
+        >
+          <Pressable onPress={(e) => e.stopPropagation()}>
+            <Animated.View entering={ZoomIn.duration(180)}>
+              <Box className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-sm">
+                <VStack space="md">
+                  <Text size="lg" bold className="text-foreground">
+                    {title}
+                  </Text>
+                  {message ? (
+                    <Text size="sm" className="text-muted-foreground">
+                      {message}
+                    </Text>
+                  ) : null}
+                  <HStack space="sm" className="justify-end">
+                    <Button variant="outline" onPress={onCancel}>
+                      <ButtonText>{cancelLabel}</ButtonText>
+                    </Button>
+                    <Button
+                      variant={destructive ? 'destructive' : 'default'}
+                      onPress={onConfirm}
+                    >
+                      <ButtonText>{confirmLabel}</ButtonText>
+                    </Button>
+                  </HStack>
+                </VStack>
+              </Box>
+            </Animated.View>
+          </Pressable>
         </Pressable>
-      </Pressable>
+      </Animated.View>
     </Modal>
   );
 }

@@ -15,6 +15,7 @@ import { pruneReportCache } from '@/utils/pdf/render';
 import {
   Icon,
   BarChart3Icon,
+  ChevronDownIcon,
   ListIcon,
   PackageIcon,
   SettingsIcon,
@@ -91,17 +92,24 @@ export function AdminShell({ children }: AdminShellProps) {
             </Text>
             <Pressable
               onPress={() => setConfirmOpen(true)}
-              className="items-center justify-center"
+              accessibilityRole="button"
+              accessibilityLabel="Hesap menüsünü aç"
+              accessibilityHint="Çıkış seçeneğini açar"
+              hitSlop={8}
+              className="rounded-full border border-border bg-card p-1"
             >
-              <Box className="h-8 w-8 items-center justify-center rounded-full bg-accent">
-                {user?.fullName ? (
-                  <Text size="xs" bold className="text-accent-foreground">
-                    {initials(user.fullName)}
-                  </Text>
-                ) : (
-                  <Icon as={UserIcon} size="sm" className="text-muted-foreground" />
-                )}
-              </Box>
+              <HStack space="xs" className="items-center">
+                <Box className="h-8 w-8 items-center justify-center rounded-full bg-accent">
+                  {user?.fullName ? (
+                    <Text size="xs" bold className="text-accent-foreground">
+                      {initials(user.fullName)}
+                    </Text>
+                  ) : (
+                    <Icon as={UserIcon} size="sm" className="text-muted-foreground" />
+                  )}
+                </Box>
+                <Icon as={ChevronDownIcon} size="2xs" className="mr-1 text-muted-foreground" />
+              </HStack>
             </Pressable>
           </HStack>
         </HStack>

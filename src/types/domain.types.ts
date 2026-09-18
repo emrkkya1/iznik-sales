@@ -198,6 +198,34 @@ export interface DeliveryItemWithProduct extends DeliveryItem {
 
 // Summary screen range selector
 export type SummaryRange = 'week' | 'month' | 'all';
+export type ReportScheduleMode = 'weekly' | 'monthly' | 'disabled';
+
+export interface ReportRecipient {
+  id: string;
+  email: string;
+  isEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReportEmailSettings {
+  scheduleMode: ReportScheduleMode;
+  updatedAt: string;
+}
+
+export interface SendReportEmailInput {
+  uri: string;
+  fileName: string;
+  reportType: 'summary' | 'branches' | 'branch-detail';
+  reportLabel: string;
+  recipientIds: string[];
+}
+
+export interface SendReportEmailResult {
+  runId: string;
+  sentCount: number;
+  failedCount: number;
+}
 
 // Özet KPIs — extended in M18 with delivered / returned / return rate
 export interface SummaryKpis {

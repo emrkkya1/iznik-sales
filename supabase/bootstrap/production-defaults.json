@@ -1,0 +1,8 @@
+{
+  "users": [
+    { "role": "admin", "fullName": "Yönetici", "username": "admin", "emailEnv": "BOOTSTRAP_ADMIN_EMAIL", "passwordEnv": "BOOTSTRAP_ADMIN_PASSWORD" },
+    { "role": "staff", "fullName": "Personel", "username": "staff", "emailEnv": "BOOTSTRAP_STAFF_EMAIL", "passwordEnv": "BOOTSTRAP_STAFF_PASSWORD" }
+  ],
+  "products": [],
+  "cities": []
+}

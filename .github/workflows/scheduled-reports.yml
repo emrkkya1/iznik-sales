@@ -1,0 +1,22 @@
+name: Scheduled reports
+
+on:
+  schedule:
+    - cron: '0 5 * * 1'
+    - cron: '0 5 1 * *'
+  workflow_dispatch:
+
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Invoke scheduled report delivery
+        env:
+          SUPABASE_URL: https://${{ vars.SUPABASE_PROJECT_REF }}.supabase.co
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          curl --fail-with-body --request POST "$SUPABASE_URL/functions/v1/deliver-scheduled-report" \
+            --header "Authorization: Bearer $SERVICE_KEY" \
+            --header "Content-Type: application/json" \
+            --data '{}'

@@ -6,7 +6,7 @@ import { ActionMenu, type ActionMenuItem } from '@/components/admin/ActionMenu';
 import { Box } from '@/components/ui/box';
 import { ErrorState } from '@/components/ui/error-state';
 import { HStack } from '@/components/ui/hstack';
-import { Icon, MoreVerticalIcon } from '@/components/ui/icon';
+import { Icon, MoreVerticalIcon, TruckIcon } from '@/components/ui/icon';
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { ReportFilterConfig } from '@/components/reports/ReportFilterConfig';
@@ -14,10 +14,11 @@ import { ExportSheet } from '@/components/reports/ExportSheet';
 import { ExportTriggerButton } from '@/components/reports/ExportTriggerButton';
 import { useBranchHubReportExport } from '@/hooks/useBranchHubReportExport';
 import { useBranchHubSummary, useSetBranchActive } from '@/hooks';
-import { formatRelativeDate } from '@/utils/formatRelativeDate';
 import { formatCount } from '@/utils/formatCount';
+import { formatRelativeDate } from '@/utils/formatRelativeDate';
 
 import { ActiveBadge } from '../../components/admin/ActiveBadge';
+import { KpiCard } from '../../components/admin/KpiCard';
 import { SummaryCard } from '../../components/admin/SummaryCard';
 import { DetailsTab } from './branch-hub/DetailsTab';
 import { MovementsTab } from './branch-hub/MovementsTab';
@@ -50,6 +51,9 @@ export function BranchHubScreen() {
 
   const data = summary.data;
   const isLoading = summary.isLoading;
+  const deliveredReturnedDisplay = data
+    ? `${formatCount(data.deliveredQty)} / ${formatCount(data.returnedQty)}`
+    : null;
 
   if (!branchId) {
     return <ErrorState title="Şube bulunamadı" message="Geçersiz şube kimliği." />;
@@ -77,7 +81,7 @@ export function BranchHubScreen() {
     : [];
 
   return (
-    <Box style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+    <Box style={{ flex: 1 }} className="bg-background">
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
@@ -136,16 +140,11 @@ export function BranchHubScreen() {
             showBalanceLabel
             isLoading={isLoading}
           />
-          <SummaryCard
-            title="Verilen - Alınan"
-            value={data?.deliveredQty ?? null}
-            format="quantity-delta"
-            secondaryValue={
-              data && data.returnedQty > 0
-                ? `${formatCount(data.returnedQty)} alınan`
-                : undefined
-            }
-            secondaryTone="destructive"
+          <KpiCard
+            icon={TruckIcon}
+            title="Verilen / Alınan"
+            value={deliveredReturnedDisplay}
+            format="count"
             isLoading={isLoading}
           />
           <SummaryCard
@@ -194,6 +193,7 @@ export function BranchHubScreen() {
       </ScrollView>
 
       <ExportSheet
+        reportType="branch-detail"
         isOpen={report.isOpen}
         onClose={report.close}
         state={report.state}
@@ -211,6 +211,7 @@ export function BranchHubScreen() {
           />
         }
         onShare={() => void report.share()}
+        onReturnToFilters={report.reset}
         onRetry={report.retry}
       />
 

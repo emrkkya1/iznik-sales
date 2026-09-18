@@ -58,3 +58,11 @@ export { useAuthStore } from '@/store';
 
 export { useGeographyDrilldown } from './useGeographyDrilldown';
 export type { DrilldownLevel } from './useGeographyDrilldown';
+export {
+  useReportRecipients,
+  useReportEmailSettings,
+  useAddReportRecipient,
+  useRemoveReportRecipient,
+  useSetReportScheduleMode,
+  useSendReportEmail,
+} from './useReportEmail';

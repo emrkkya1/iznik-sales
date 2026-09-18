@@ -24,12 +24,14 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
-import { CheckIcon, CloseIcon, Icon } from '@/components/ui/icon';
+import { Button, ButtonIcon, ButtonSpinner, ButtonText } from '@/components/ui/button';
+import { CheckIcon, CloseIcon, Icon, MailIcon, ShareIcon } from '@/components/ui/icon';
+import { HStack } from '@/components/ui/hstack';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import type { ReportExportState } from '@/hooks/useReportExport';
+import { EmailReportSheet } from './EmailReportSheet';
 
 type ExportSheetProps = {
   isOpen: boolean;
@@ -41,7 +43,10 @@ type ExportSheetProps = {
   /** Rendered in the idle stage (period configuration). */
   configSlot?: ReactNode;
   onShare: () => void;
+  /** Returns a completed report to its filter/configuration step. */
+  onReturnToFilters: () => void;
   onRetry: () => void;
+  reportType: 'summary' | 'branches' | 'branch-detail';
 };
 
 const PANEL_WIDTH = 440;
@@ -55,7 +60,9 @@ export function ExportSheet({
   contents,
   configSlot,
   onShare,
+  onReturnToFilters,
   onRetry,
+  reportType,
 }: ExportSheetProps) {
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
@@ -147,7 +154,9 @@ export function ExportSheet({
                 contents={contents}
                 configSlot={configSlot}
                 onShare={onShare}
+                onReturnToFilters={onReturnToFilters}
                 onRetry={onRetry}
+                reportType={reportType}
               />
             </ScrollView>
           </View>
@@ -163,14 +172,18 @@ function StageBody({
   contents,
   configSlot,
   onShare,
+  onReturnToFilters,
   onRetry,
+  reportType,
 }: {
   state: ReportExportState;
   reportLabel: string;
   contents?: readonly string[];
   configSlot?: ReactNode;
   onShare: () => void;
+  onReturnToFilters: () => void;
   onRetry: () => void;
+  reportType: 'summary' | 'branches' | 'branch-detail';
 }) {
   if (state.status === 'idle') {
     return configSlot ? <>{configSlot}</> : null;
@@ -223,24 +236,31 @@ function StageBody({
   return (
     <ReadyBody
       state={state}
+      reportLabel={reportLabel}
       contents={contents}
       onShare={onShare}
-      onRetry={onRetry}
+      onReturnToFilters={onReturnToFilters}
+      reportType={reportType}
     />
   );
 }
 
 function ReadyBody({
   state,
+  reportLabel,
   contents,
   onShare,
-  onRetry,
+  onReturnToFilters,
+  reportType,
 }: {
   state: Extract<ReportExportState, { status: 'ready' }>;
+  reportLabel: string;
   contents?: readonly string[];
   onShare: () => void;
-  onRetry: () => void;
+  onReturnToFilters: () => void;
+  reportType: 'summary' | 'branches' | 'branch-detail';
 }) {
+  const [emailOpen, setEmailOpen] = useState(false);
   return (
     <VStack space="md">
       <VStack space="xs" className="items-center py-2">
@@ -283,22 +303,37 @@ function ReadyBody({
         </Text>
       ) : null}
 
-      <Button
-        variant="default"
-        size="lg"
-        onPress={onShare}
-        disabled={state.shareBusy}
-        accessibilityState={{ busy: state.shareBusy }}
-      >
-        {state.shareBusy ? <ButtonSpinner /> : null}
-        <ButtonText>Paylaş / Kaydet</ButtonText>
-      </Button>
+      <HStack space="sm" className="w-full">
+        <Button
+          variant="default"
+          size="lg"
+          className="px-3"
+          style={{ flex: 1 }}
+          onPress={onShare}
+          disabled={state.shareBusy}
+          accessibilityState={{ busy: state.shareBusy }}
+        >
+          {state.shareBusy ? <ButtonSpinner /> : <ButtonIcon as={ShareIcon} />}
+          <ButtonText numberOfLines={1}>Paylaş / Kaydet</ButtonText>
+        </Button>
+        <Button variant="default" size="lg" className="px-3" style={{ flex: 1 }} onPress={() => setEmailOpen(true)}>
+          <ButtonIcon as={MailIcon} />
+          <ButtonText numberOfLines={1}>E-posta ile gönder</ButtonText>
+        </Button>
+      </HStack>
 
-      <Button variant="outline" size="default" onPress={onRetry} className="w-full">
+      <Button variant="outline" size="default" onPress={onReturnToFilters} className="w-full">
         <ButtonText className="w-full text-center" numberOfLines={1}>
           Yeniden Oluştur
         </ButtonText>
       </Button>
+      {emailOpen ? <EmailReportSheet
+        open
+        onClose={() => setEmailOpen(false)}
+        state={state}
+        reportType={reportType}
+        reportLabel={reportLabel}
+      /> : null}
     </VStack>
   );
 }
