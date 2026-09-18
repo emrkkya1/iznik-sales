@@ -125,8 +125,26 @@ jobs:
       - name: Assemble release APK
         env:
           GRADLE_OPTS: -Xmx4096m -XX:MaxMetaspaceSize=1024m -Dorg.gradle.daemon=false
+          # Keep the values available to the Metro bundle process as well as
+          # in .env. This avoids depending on a later process reloading .env.
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
         run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a
         working-directory: android
+
+      # An APK with missing EXPO_PUBLIC values installs successfully but fails
+      # only when opened. Verify the final embedded JavaScript bundle instead.
+      # grep is deliberately quiet so public connection values are never logged.
+      - name: Verify APK connection configuration
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          apk='android/app/build/outputs/apk/release/app-release.apk'
+          test -s "$apk"
+          unzip -p "$apk" assets/index.android.bundle > /tmp/index.android.bundle
+          grep --fixed-strings --quiet "$EXPO_PUBLIC_SUPABASE_URL" /tmp/index.android.bundle
+          grep --fixed-strings --quiet "$EXPO_PUBLIC_SUPABASE_ANON_KEY" /tmp/index.android.bundle
 
       - uses: actions/upload-artifact@v4
         with:
