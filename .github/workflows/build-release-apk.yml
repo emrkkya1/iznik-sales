@@ -58,7 +58,11 @@ jobs:
           distribution: zulu
           java-version: '17'
 
+      # The action's legacy default also requests the removed `tools` package.
+      # Explicitly install only the SDK command required by Gradle/ADB.
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       # Expo embeds EXPO_PUBLIC_* values into the release bundle. Keep this
       # file in CI only; its source values are GitHub Actions secrets.
