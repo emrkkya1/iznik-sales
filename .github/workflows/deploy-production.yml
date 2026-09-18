@@ -21,6 +21,22 @@ jobs:
         with: { version: latest }
       - run: npm ci
       - run: npm run test:all
+      - name: Validate deployment configuration
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          EMAIL_REPORTS_ENABLED: ${{ vars.EMAIL_REPORTS_ENABLED }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          REPORTS_FROM_EMAIL: ${{ secrets.REPORTS_FROM_EMAIL }}
+        run: |
+          test -n "$SUPABASE_ACCESS_TOKEN"
+          test -n "$SUPABASE_DB_PASSWORD"
+          printf '%s' "$PROJECT_REF" | grep --extended-regexp --quiet '^[a-z0-9]{20}$'
+          if [ "$EMAIL_REPORTS_ENABLED" = 'true' ]; then
+            test -n "$RESEND_API_KEY"
+            test -n "$REPORTS_FROM_EMAIL"
+          fi
       - name: Apply pending migrations
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -30,6 +46,7 @@ jobs:
           supabase link --project-ref "$PROJECT_REF"
           supabase db push
       - name: Sync email runtime secrets
+        if: ${{ vars.EMAIL_REPORTS_ENABLED == 'true' }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}

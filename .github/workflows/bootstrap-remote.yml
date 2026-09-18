@@ -39,8 +39,17 @@ jobs:
         run: |
           supabase link --project-ref "$PROJECT_REF"
           supabase db push
-          supabase secrets set --project-ref "$PROJECT_REF" RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}" REPORTS_FROM_EMAIL="${{ secrets.REPORTS_FROM_EMAIL }}"
           supabase functions deploy send-report-email deliver-scheduled-report --project-ref "$PROJECT_REF"
+      - name: Sync email runtime secrets
+        if: ${{ vars.EMAIL_REPORTS_ENABLED == 'true' }}
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          REPORTS_FROM_EMAIL: ${{ secrets.REPORTS_FROM_EMAIL }}
+          PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+        run: |
+          test -n "$RESEND_API_KEY"
+          test -n "$REPORTS_FROM_EMAIL"
+          supabase secrets set --project-ref "$PROJECT_REF" RESEND_API_KEY="$RESEND_API_KEY" REPORTS_FROM_EMAIL="$REPORTS_FROM_EMAIL"
       - name: Seed selected baseline profile
         env:
           SUPABASE_URL: https://${{ vars.SUPABASE_PROJECT_REF }}.supabase.co

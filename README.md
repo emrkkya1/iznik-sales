@@ -95,22 +95,26 @@ Bunları `production` ortamında ekleyin.
 
 ### E-posta raporları
 
-Bu projedeki mevcut **Deploy production** iş akışı e-posta Function'larını da yayımlar. Bu nedenle üretim yayını çalıştırmadan önce aşağıdaki iki değeri ekleyin. E-posta raporlarını hiç kullanmayacaksanız, önce ilgili iş akışını ve Function'ları teknik bir kişiyle devre dışı bırakın.
+E-posta raporları isteğe bağlıdır. Alan adı ve e-posta ayarları henüz hazır değilse normal üretim yayını, veritabanı migration'ları ve APK üretimi devam eder; e-posta ayarları yalnızca atlanır. E-posta Function'ları yine yayımlanır, ancak ayarlar tamamlanana kadar e-posta göndermeyi denemek anlaşılır bir yapılandırma hatası döndürür.
+
+E-posta raporlarını etkinleştirmek istediğinizde:
 
 1. [Resend](https://resend.com/) hesabı oluşturun.
 2. **Domains** bölümünden kendi alan adınızı ekleyin.
 3. Resend'in gösterdiği SPF ve DKIM DNS kayıtlarını alan adı sağlayıcınıza girin; doğrulama tamamlanana kadar bekleyin.
 4. **API Keys** bölümünden yalnızca gönderme yetkili, mümkünse alan adıyla sınırlı bir anahtar oluşturun.
-5. `production` ortamına şu secret'ları ekleyin:
+5. GitHub → **Settings** → **Secrets and variables** → **Actions** bölümünde `production` ortamına şu secret'ları ekleyin:
 
 | Ad | Değer |
 |---|---|
 | `RESEND_API_KEY` | Resend'in bir kez gösterdiği API anahtarı |
 | `REPORTS_FROM_EMAIL` | Örnek: `Tarihi İznik Fırını <raporlar@alanadiniz.com>`; doğrulanmış alan adı kullanılmalıdır. |
 
+6. Aynı ekranda **Variables** sekmesinden `EMAIL_REPORTS_ENABLED` adlı değeri tam olarak `true` yapın. Bu değişken yoksa veya `true` değilse e-posta secret'ları hiç kullanılmaz ve deploy başarısız olmaz.
+
 ### İsteğe bağlı bilgiler
 
-`SUPABASE_SERVICE_ROLE_KEY`, `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD`, `BOOTSTRAP_STAFF_EMAIL` ve `BOOTSTRAP_STAFF_PASSWORD` yalnızca ilk uzaktan veri yükleme veya planlı rapor e-postaları için gerekir. Normal APK üretimi ve standart üretim yayını için gerekli değildir.
+`SUPABASE_SERVICE_ROLE_KEY`, `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD`, `BOOTSTRAP_STAFF_EMAIL` ve `BOOTSTRAP_STAFF_PASSWORD` yalnızca ilk uzaktan veri yükleme veya planlı rapor e-postaları için gerekir. Normal APK üretimi ve standart üretim yayını için gerekli değildir. Planlı raporları ayrıca açmak için `SCHEDULED_REPORTS_ENABLED` variable'ını `true` yapın; bu değer yoksa zamanlanmış iş bilinçli olarak atlanır.
 
 ## 3. Uygulama kimliğini uyarlama
 

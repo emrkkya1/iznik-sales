@@ -8,6 +8,8 @@ on:
 
 jobs:
   deliver:
+    # A skipped job is intentional until both sender and schedule setup are complete.
+    if: ${{ vars.EMAIL_REPORTS_ENABLED == 'true' && vars.SCHEDULED_REPORTS_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -16,6 +18,7 @@ jobs:
           SUPABASE_URL: https://${{ vars.SUPABASE_PROJECT_REF }}.supabase.co
           SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
+          test -n "$SERVICE_KEY"
           curl --fail-with-body --request POST "$SUPABASE_URL/functions/v1/deliver-scheduled-report" \
             --header "Authorization: Bearer $SERVICE_KEY" \
             --header "Content-Type: application/json" \
