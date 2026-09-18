@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, usePathname } from 'expo-router';
 import type { Href } from 'expo-router';
@@ -71,11 +72,12 @@ export function AdminShell({ children }: AdminShellProps) {
       <Box style={{ flex: 1 }} className="flex-col">
         <HStack className="items-center justify-between border-b border-border bg-background px-6 py-4">
           <HStack space="md" className="items-center">
-            <Box className="h-9 w-9 items-center justify-center rounded-xl bg-primary">
-              <Text size="sm" bold className="text-primary-foreground">
-                İF
-              </Text>
-            </Box>
+            <Image
+              source={require('../../../assets/images/iznik-firin-logo.jpg')}
+              accessibilityLabel="Tarihi İznik Fırını logosu"
+              resizeMode="contain"
+              style={{ height: 36, width: 36 }}
+            />
             <VStack space="xs">
               <Text size="lg" bold className="text-foreground">
                 Yönetim Paneli

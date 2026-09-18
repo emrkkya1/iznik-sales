@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ElementType, ReactNode } from 'react';
+import { Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, usePathname } from 'expo-router';
 import type { Href } from 'expo-router';
@@ -45,11 +46,12 @@ export function StaffShell({ children }: StaffShellProps) {
       <Box style={{ flex: 1 }} className="flex-col">
         <HStack className="items-center justify-between border-b border-border bg-background px-4 py-2">
           <HStack space="sm" className="items-center">
-            <Box className="h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <Text size="sm" bold className="text-primary-foreground">
-                İF
-              </Text>
-            </Box>
+            <Image
+              source={require('../../../assets/images/iznik-firin-logo.jpg')}
+              accessibilityLabel="Tarihi İznik Fırını logosu"
+              resizeMode="contain"
+              style={{ height: 32, width: 32 }}
+            />
             <Text size="sm" bold className="text-foreground">
               Tarihi İznik Fırını
             </Text>

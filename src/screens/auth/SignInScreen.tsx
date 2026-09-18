@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Platform } from 'react-native';
+import { Image, Platform } from 'react-native';
 
 import { Box } from '@/components/ui/box';
 import { Button, ButtonText, ButtonSpinner } from '@/components/ui/button';
@@ -38,11 +38,12 @@ export function SignInScreen() {
         <Box className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-sm">
           <VStack space="2xl">
             <VStack space="lg" className="items-center">
-              <Box className="h-14 w-14 items-center justify-center rounded-2xl bg-primary">
-                <Text size="xl" bold className="text-primary-foreground">
-                  İF
-                </Text>
-              </Box>
+              <Image
+                source={require('../../../assets/images/iznik-firin-logo.jpg')}
+                accessibilityLabel="Tarihi İznik Fırını logosu"
+                resizeMode="contain"
+                style={{ height: 112, width: 112 }}
+              />
               <VStack space="sm" className="items-center">
                 <Heading size="xl" bold className="text-foreground">
                   Tarihi İznik Fırını

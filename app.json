@@ -4,7 +4,7 @@
     "slug": "tarihi-iznik-firini-sales",
     "version": "1.0.1",
     "orientation": "landscape",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/iznik-firin-logo.jpg",
     "scheme": "tarihiiznikfirinisales",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -13,12 +13,7 @@
     },
     "android": {
       "package": "com.tarihiiznikfirini.sales",
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
-      },
+      "icon": "./assets/images/iznik-firin-logo.jpg",
       "predictiveBackGestureEnabled": false
     },
     "web": {

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createAdminClient, createStaffClient, type AdminClient } from './_helpers/clients';
+import { createAdminClient, createAnonClient, createStaffClient, type AdminClient } from './_helpers/clients';
 
 const PREFIX = `ITEST-HUB ${Date.now().toString(36)}`;
 
@@ -17,6 +17,7 @@ type FixtureIds = {
 const ids: Partial<FixtureIds> = {};
 let admin: AdminClient;
 let staff: AdminClient;
+let anon: AdminClient;
 
 async function getBranchHubDetails(branchId: string) {
   const { data, error } = await admin.rpc('get_branch_hub_details', { p_branch_id: branchId });
@@ -68,6 +69,7 @@ describe('branch hub details + ledger (integration)', () => {
   beforeAll(async () => {
     admin = await createAdminClient();
     staff = await createStaffClient();
+    anon = await createAnonClient();
 
     const city = await admin
       .from('cities')
@@ -142,6 +144,60 @@ describe('branch hub details + ledger (integration)', () => {
     expect(details.returnRate).toBeNull();
     expect(details.activeProductCount).toBeGreaterThanOrEqual(1);
     expect(details.totalProductCount).toBeGreaterThanOrEqual(1);
+  });
+
+  it('allows repeated same-day price edits without creating an invalid price range', async () => {
+    const today = new Date().toISOString().slice(0, 10);
+
+    for (const price of [15, 17.5]) {
+      const { error } = await admin.rpc('set_branch_product_price_atomic', {
+        p_branch_product_id: ids.branchProductId!,
+        p_new_price: price,
+        p_effective_from: today,
+      });
+      expect(error).toBeNull();
+    }
+
+    const { data, error } = await admin
+      .from('branch_product_prices')
+      .select('price, start_date, end_date')
+      .eq('branch_product_id', ids.branchProductId!);
+
+    expect(error).toBeNull();
+    expect(data).toEqual([{ price: 17.5, start_date: today, end_date: null }]);
+
+    // Keep the shared fixture's original price for the financial tests below.
+    const { error: restoreError } = await admin.rpc('set_branch_product_price_atomic', {
+      p_branch_product_id: ids.branchProductId!,
+      p_new_price: 12.5,
+      p_effective_from: today,
+    });
+    expect(restoreError).toBeNull();
+  });
+
+  it('rejects non-admin and malformed price updates', async () => {
+    const today = new Date().toISOString().slice(0, 10);
+
+    const { error: staffError } = await staff.rpc('set_branch_product_price_atomic', {
+      p_branch_product_id: ids.branchProductId!,
+      p_new_price: 20,
+      p_effective_from: today,
+    });
+    expect(staffError?.message).toContain('Not authorized');
+
+    const { error: anonError } = await anon.rpc('set_branch_product_price_atomic', {
+      p_branch_product_id: ids.branchProductId!,
+      p_new_price: 20,
+      p_effective_from: today,
+    });
+    expect(anonError?.message).toContain('Not authorized');
+
+    const { error: malformedError } = await admin.rpc('set_branch_product_price_atomic', {
+      p_branch_product_id: ids.branchProductId!,
+      p_new_price: 0,
+      p_effective_from: today,
+    });
+    expect(malformedError?.message).toContain('Price must be greater than zero');
   });
 
   it('reflects a delivery + payment combination and excludes soft-deleted rows', async () => {
