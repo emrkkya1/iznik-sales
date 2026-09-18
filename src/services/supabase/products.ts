@@ -6,6 +6,7 @@ import type {
   SetBranchProductActiveInput,
   SetBranchProductPriceInput,
   Product,
+  CatalogProduct,
 } from '@/types';
 
 import { supabaseClient } from './supabaseClient';
@@ -31,10 +32,44 @@ type BranchProductRow = {
 };
 
 export const supabaseProductRepository: ProductRepository = {
+  async listCatalogProducts(includeArchived = false) {
+    const { data, error } = await supabaseClient.rpc('list_catalog_products', {
+      p_include_archived: includeArchived,
+    });
+    if (error) throw error;
+    return (data ?? []) as unknown as CatalogProduct[];
+  },
+
+  async createCatalogProduct(input) {
+    const { data, error } = await supabaseClient.rpc('create_catalog_product', {
+      p_name: input.name,
+      p_default_price: input.defaultPrice,
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async setCatalogProductDefaultPrice(productId, defaultPrice) {
+    const { error } = await supabaseClient.rpc('set_catalog_product_default_price', {
+      p_product_id: productId,
+      p_default_price: defaultPrice,
+    });
+    if (error) throw error;
+  },
+
+  async setCatalogProductArchived(productId, archived) {
+    const { error } = await supabaseClient.rpc('set_catalog_product_archived', {
+      p_product_id: productId,
+      p_archived: archived,
+    });
+    if (error) throw error;
+  },
+
   async listProducts() {
     const { data, error } = await supabaseClient
       .from('products')
       .select('id, name, image_url, is_active')
+      .is('archived_at', null)
       .order('name');
     if (error) throw error;
     return (data ?? []).map((product) => ({

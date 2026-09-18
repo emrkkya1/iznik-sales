@@ -44,6 +44,16 @@ export interface Product {
   isActive: boolean;
 }
 
+export interface CatalogProduct extends Product {
+  defaultPrice: number;
+  isArchived: boolean;
+}
+
+export interface BranchProductSelection {
+  productId: string;
+  price: number;
+}
+
 export interface BranchProduct {
   id: string;
   branchId: string;
@@ -279,6 +289,7 @@ export interface CreateBranchInput {
   name: string;
   openingBalance: number;
   isActive: boolean;
+  products: BranchProductSelection[];
 }
 
 // Branch movement entry (from list_deliveries_with_payments RPC)
@@ -334,6 +345,7 @@ export interface BranchProductWithStatus {
   branchProductId: string | null;
   isActivatedForBranch: boolean;
   currentPrice: number | null;
+  isArchived?: boolean;
 }
 
 // Inputs for branch product mutations (PR-6.2)

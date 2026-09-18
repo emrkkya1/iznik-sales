@@ -446,7 +446,9 @@ export type Database = {
       }
       products: {
         Row: {
+          archived_at: string | null
           created_at: string | null
+          default_price: number
           id: string
           image_url: string | null
           is_active: boolean | null
@@ -454,7 +456,9 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string | null
+          default_price?: number
           id?: string
           image_url?: string | null
           is_active?: boolean | null
@@ -462,7 +466,9 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          archived_at?: string | null
           created_at?: string | null
+          default_price?: number
           id?: string
           image_url?: string | null
           is_active?: boolean | null
@@ -529,7 +535,12 @@ export type Database = {
           p_is_active: boolean
           p_name: string
           p_opening_balance: number
+          p_products?: Json
         }
+        Returns: string
+      }
+      create_catalog_product: {
+        Args: { p_default_price: number; p_image_url?: string; p_name: string }
         Returns: string
       }
       create_city: { Args: { p_name: string }; Returns: string }
@@ -589,6 +600,10 @@ export type Database = {
       }
       list_branches_with_context: {
         Args: { p_district_id: string }
+        Returns: Json
+      }
+      list_catalog_products: {
+        Args: { p_include_archived?: boolean }
         Returns: Json
       }
       list_cities_with_counts: { Args: never; Returns: Json }
@@ -686,6 +701,14 @@ export type Database = {
           p_effective_from: string
           p_new_price: number
         }
+        Returns: undefined
+      }
+      set_catalog_product_archived: {
+        Args: { p_archived: boolean; p_product_id: string }
+        Returns: undefined
+      }
+      set_catalog_product_default_price: {
+        Args: { p_default_price: number; p_product_id: string }
         Returns: undefined
       }
       set_city_active: {

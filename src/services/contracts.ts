@@ -9,6 +9,7 @@ import type {
   BranchProductWithPrice,
   BranchProductWithStatus,
   BranchWithContext,
+  CatalogProduct,
   City,
   CityWithCounts,
   CreateBranchInput,
@@ -57,6 +58,10 @@ export interface LocationRepository {
 
 export interface ProductRepository {
   listProducts(): Promise<Product[]>;
+  listCatalogProducts(includeArchived?: boolean): Promise<CatalogProduct[]>;
+  createCatalogProduct(input: { name: string; defaultPrice: number }): Promise<string>;
+  setCatalogProductDefaultPrice(productId: string, defaultPrice: number): Promise<void>;
+  setCatalogProductArchived(productId: string, archived: boolean): Promise<void>;
   listBranchProducts(
     branchId: string,
     date: string,

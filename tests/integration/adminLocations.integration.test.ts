@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createAdminClient, createStaffClient, type AdminClient } from './_helpers/clients';
+import { createAdminClient, createAnonClient, createStaffClient, type AdminClient } from './_helpers/clients';
 
 const PREFIX = `ITEST-LOC ${Date.now().toString(36)}`;
 
@@ -16,6 +16,7 @@ type FixtureIds = {
 const ids: FixtureIds = {};
 let admin: AdminClient;
 let staff: AdminClient;
+let anon: AdminClient;
 const createdCities: string[] = [];
 const createdDistricts: string[] = [];
 const createdBranches: string[] = [];
@@ -42,6 +43,7 @@ describe('admin locations RPCs (integration)', () => {
   beforeAll(async () => {
     admin = await createAdminClient();
     staff = await createStaffClient();
+    anon = await createAnonClient();
 
     // Reset any leftover state from previous runs.
     await admin.rpc('set_opening_balances_locked', { p_locked: false });
@@ -168,5 +170,53 @@ describe('admin locations RPCs (integration)', () => {
     });
     expect(error).not.toBeNull();
     expect(error?.message).toMatch(/not found/i);
+  });
+
+  it('creates selected branch products atomically and rejects invalid selections', async () => {
+    const { data: products, error: productsError } = await admin
+      .from('products')
+      .select('id')
+      .order('name')
+      .limit(2);
+    expect(productsError).toBeNull();
+    const [first, second] = products ?? [];
+    expect(first?.id).toBeTruthy();
+    expect(second?.id).toBeTruthy();
+
+    const { data: branchId, error } = await admin.rpc('create_branch', {
+      p_district_id: ids.districtId!,
+      p_name: `${PREFIX} Seçimli`,
+      p_opening_balance: 0,
+      p_is_active: true,
+      p_products: [{ productId: first.id, price: 77.5 }],
+    });
+    expect(error).toBeNull();
+    createdBranches.push(branchId as string);
+
+    const { data: branchProducts } = await admin
+      .from('branch_products')
+      .select('product_id, branch_product_prices(price)')
+      .eq('branch_id', branchId);
+    expect(branchProducts).toHaveLength(1);
+    expect(branchProducts?.[0]?.product_id).toBe(first.id);
+    expect((branchProducts?.[0]?.branch_product_prices as { price: number }[])?.[0]?.price).toBe(77.5);
+
+    const bad = await admin.rpc('create_branch', {
+      p_district_id: ids.districtId!,
+      p_name: `${PREFIX} Hatalı`,
+      p_opening_balance: 0,
+      p_is_active: true,
+      p_products: [{ productId: second.id, price: 1 }, { productId: second.id, price: 1 }],
+    });
+    expect(bad.error?.message).toMatch(/duplicate/i);
+
+    const staffResult = await staff.rpc('create_branch', {
+      p_district_id: ids.districtId!, p_name: `${PREFIX} Staff`, p_opening_balance: 0, p_is_active: true, p_products: [],
+    });
+    expect(staffResult.error?.message).toMatch(/not authorized/i);
+    const anonResult = await anon.rpc('create_branch', {
+      p_district_id: ids.districtId!, p_name: `${PREFIX} Anon`, p_opening_balance: 0, p_is_active: true, p_products: [],
+    });
+    expect(anonResult.error).not.toBeNull();
   });
 });

@@ -34,6 +34,7 @@ import {
   FormSheet,
   type FormField,
 } from '../../components/admin/FormSheet';
+import { CreateBranchSheet } from '../../components/admin/CreateBranchSheet';
 
 type ActionTarget =
   | { kind: 'city'; entity: CityWithCounts }
@@ -119,33 +120,6 @@ export function CitiesScreen() {
       type: 'text',
       required: true,
       placeholder: 'Örn. Merkez',
-    },
-  ];
-
-  const branchFields: FormField[] = [
-    {
-      name: 'name',
-      label: 'Şube Adı',
-      type: 'text',
-      required: true,
-      placeholder: 'Örn. Şube 1',
-    },
-    ...(!openingBalancesLocked.data
-      ? [
-          {
-            name: 'openingBalance',
-            label: 'Açılış Bakiyesi',
-            type: 'numeric' as const,
-            placeholder: '0,00',
-            defaultValue: '0',
-          },
-        ]
-      : []),
-    {
-      name: 'isActive',
-      label: 'Aktif',
-      type: 'boolean' as const,
-      defaultValue: true,
     },
   ];
 
@@ -321,24 +295,21 @@ export function CitiesScreen() {
       ) : null}
 
       {selectedDistrictId ? (
-        <FormSheet
+        <CreateBranchSheet
           open={branchSheetOpen}
-          title="Yeni Şube"
-          fields={branchFields}
-          onSubmit={async (values) => {
-            const balanceStr = values.openingBalance as string | undefined;
-            const balance = balanceStr
-              ? Number(balanceStr.replace(',', '.'))
-              : 0;
+          districtId={selectedDistrictId}
+          openingBalancesLocked={Boolean(openingBalancesLocked.data)}
+          onSubmit={async (input) => {
             await createBranch.mutateAsync({
               districtId: selectedDistrictId,
-              name: (values.name as string).trim(),
-              openingBalance: Number.isFinite(balance) ? balance : 0,
-              isActive: Boolean(values.isActive),
+              name: input.name,
+              openingBalance: input.openingBalance,
+              isActive: true,
+              products: input.products,
             });
             setBranchSheetOpen(false);
           }}
-          onCancel={() => setBranchSheetOpen(false)}
+          onClose={() => setBranchSheetOpen(false)}
           isSubmitting={createBranch.isPending}
           serverError={createBranch.error?.message}
         />

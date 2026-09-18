@@ -136,11 +136,12 @@ export function ProductsTab({ branchId }: ProductsTabProps) {
         {items.map((item) => (
           <Box key={item.productId} style={{ width: cardWidth }}>
             {item.isActivatedForBranch ? (
-              <BranchProductCard
+                <BranchProductCard
                 name={item.productName}
                 imageUrl={item.productImageUrl}
                 price={item.currentPrice ?? 0}
-                isActive
+                  isActive
+                  archived={item.isArchived}
                 onPress={() => handleDeactivate(item)}
                 onEditPress={() => handleEditPress(item)}
               />
