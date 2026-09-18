@@ -151,6 +151,19 @@ APK almak için Google Play hesabı gerekmez.
 
 Her sürüm numarası yalnızca bir kez yayımlanabilir. Yeni APK için sürümü yeniden artırın.
 
+### APK bağlantısını e-posta ile gönderme (isteğe bağlı)
+
+APK dosyaları e-posta ek boyutu sınırını aşabildiği için iş akışı dosyayı ek olarak göndermez; bunun yerine herkese açık GitHub Release indirme bağlantısını e-postalar. Açmak için önce Resend alan adı doğrulamasını tamamlayın, sonra şunları ekleyin:
+
+| Tür | Ad | Değer |
+|---|---|---|
+| Secret | `RESEND_API_KEY` | Resend API anahtarı |
+| Secret | `REPORTS_FROM_EMAIL` | Doğrulanmış gönderen adresi |
+| Secret | `APK_RELEASE_RECIPIENT_EMAIL` | APK bağlantısının gönderileceği e-posta adresi |
+| Variable | `SEND_APK_BY_EMAIL` | Tam olarak `true` |
+
+Bu variable yoksa veya `true` değilse APK yine oluşturulur ve Release'e eklenir; e-posta adımı tamamen atlanır.
+
 ## Günlük kullanım
 
 1. Uygulamayı tablet üzerinde açın ve size tanımlanmış hesapla giriş yapın.
