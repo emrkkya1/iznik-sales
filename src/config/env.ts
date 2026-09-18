@@ -14,7 +14,13 @@ export function validateEnv(): EnvConfig {
     return validatedConfig;
   }
 
-  const result = envSchema.safeParse(process.env);
+  // Expo only embeds public values that are accessed statically with dot
+  // notation. Passing the entire process.env object leaves these fields
+  // undefined in a production APK.
+  const result = envSchema.safeParse({
+    EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
+    EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+  });
 
   if (!result.success) {
     const errors = result.error.issues
