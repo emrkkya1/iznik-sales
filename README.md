@@ -123,7 +123,9 @@ Bu işlem tabloları, güvenlik kurallarını ve uygulamanın kullandığı Supa
 4. `confirm_project_ref` alanına 3. adımda not ettiğiniz Project Ref değerini eksiksiz yazın.
 5. **Run workflow** düğmesine basın ve yeşil onayı bekleyin.
 
-Bu işlem 5A adımında girdiğiniz yönetici ve personel hesaplarını oluşturur. Ayrıca 16 temel ürünü, 8 şehirdeki 82 şubeyi, tüm ürün-şube eşleşmelerini ve başlangıç fiyatlarını ekler. Açılış bakiyeleri sıfırdır; teslimat, iade, tahsilat veya demo finansal hareket eklenmez.
+Bu işlem 5A adımında girdiğiniz yönetici ve personel hesaplarını oluşturur. Aynı zamanda mevcut supabase/seed-data SQL dosyalarındaki gerçek katalog kayıtlarını sırayla uygular: 16 temel ürün, 8 şehirdeki 82 şube, tüm ürün-şube eşleşmeleri ve başlangıç fiyatları eklenir. Açılış bakiyeleri sıfırdır; teslimat, iade, tahsilat veya demo finansal hareket eklenmez. Yerel test kullanıcılarını içeren SQL dosyası üretime uygulanmaz.
+
+Bu iş akışını yalnızca yeni ve boş Supabase projesi için bir kez çalıştırın. Sonraki kullanıcı, şube, ürün ve fiyat değişikliklerini uygulama yönetim panelinden yapın.
 
 ### 8. İlk APK'yı oluşturun ve tablete kurun
 

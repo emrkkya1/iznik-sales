@@ -38,7 +38,10 @@ jobs:
           PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
         run: |
           supabase link --project-ref "$PROJECT_REF"
-          supabase db push
+          # Production starts with the real catalog/location data. Exclude
+          # 005_auth_users.sql because it creates local test credentials.
+          sed -i 's|^sql_paths = .*|sql_paths = ["./seed-data/001_products.sql", "./seed-data/002_locations.sql", "./seed-data/003_branch_products.sql", "./seed-data/004_prices.sql"]|' supabase/config.toml
+          supabase db push --include-seed
           supabase functions deploy send-report-email deliver-scheduled-report --project-ref "$PROJECT_REF"
       - name: Sync email runtime secrets
         if: ${{ vars.EMAIL_REPORTS_ENABLED == 'true' }}
