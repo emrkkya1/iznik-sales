@@ -74,6 +74,18 @@ export function ProductsTab({ branchId }: ProductsTabProps) {
   };
 
   const handleActivatePress = (item: BranchProductWithStatus) => {
+    // A deactivated product already has a branch_products row and price
+    // history. Restore that row instead of treating it as a first activation.
+    // This preserves the branch's existing price and avoids the duplicate-row
+    // guard in activate_branch_product.
+    if (item.branchProductId) {
+      setActive.mutate({
+        branchProductId: item.branchProductId,
+        isActive: true,
+      });
+      return;
+    }
+
     setActivateTarget({
       productId: item.productId,
       productName: item.productName,
@@ -139,10 +151,10 @@ export function ProductsTab({ branchId }: ProductsTabProps) {
                 <BranchProductCard
                 name={item.productName}
                 imageUrl={item.productImageUrl}
-                price={item.currentPrice ?? 0}
+                  price={item.currentPrice ?? 0}
                   isActive
                   archived={item.isArchived}
-                onPress={() => handleDeactivate(item)}
+                  onDeactivatePress={() => handleDeactivate(item)}
                 onEditPress={() => handleEditPress(item)}
               />
             ) : (

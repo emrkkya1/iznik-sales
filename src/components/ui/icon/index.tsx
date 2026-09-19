@@ -164,6 +164,20 @@ const PackageIcon = createIcon({
 PackageIcon.displayName = 'PackageIcon';
 export { PackageIcon };
 
+const ArchiveIcon = createIcon({
+  Root: Svg,
+  viewBox: '0 0 24 24',
+  path: (
+    <>
+      <Path d="M3 7H21V21H3V7Z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M2 3H22V7H2V3Z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M10 12H14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
+});
+ArchiveIcon.displayName = 'ArchiveIcon';
+export { ArchiveIcon };
+
 const BanknoteIcon = createIcon({
   Root: Svg,
   viewBox: '0 0 24 24',
