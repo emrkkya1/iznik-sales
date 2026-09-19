@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 
 import { Box } from '@/components/ui/box';
 import { HStack } from '@/components/ui/hstack';
-import { Icon, EditIcon, PackageIcon } from '@/components/ui/icon';
+import { ArchiveIcon, Icon, EditIcon, PackageIcon } from '@/components/ui/icon';
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
@@ -13,9 +13,11 @@ type BranchProductCardProps = {
   imageUrl: string | null;
   price: number;
   isActive: boolean;
-  // Tap on the card body (not on the pen) — typically deactivates the
-  // product for this branch.
+  // Optional general card action used by the catalog screen. Branch Hub does
+  // not provide this, so its card body remains inert.
   onPress?: () => void;
+  // Dedicated destructive action for deactivating the product at this branch.
+  onDeactivatePress?: () => void;
   // Tap on the pen icon — typically opens the price-edit sheet.
   onEditPress?: () => void;
   className?: string;
@@ -30,17 +32,15 @@ type BranchProductCardProps = {
 // Ürünler & Fiyatlar tab.
 //
 // Tap zones:
-//   - tapping the pen icon   → onEditPress (open price-edit sheet)
-//   - tapping the card body  → onPress (deactivate the product)
-//
-// The pen is a separate nested Pressable that calls e.stopPropagation() so
-// tapping it doesn't bubble to the card's onPress.
+//   - archive icon, top-left → onDeactivatePress
+//   - pen icon               → onEditPress (open price-edit sheet)
 export function BranchProductCard({
   name,
   imageUrl,
   price,
   isActive,
   onPress,
+  onDeactivatePress,
   onEditPress,
   className,
   priceLabel,
@@ -72,6 +72,20 @@ export function BranchProductCard({
             <Icon as={PackageIcon} size="xl" className="text-muted-foreground" />
           </Box>
         )}
+        {onDeactivatePress ? (
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              onDeactivatePress();
+            }}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={`${name} ürününü şubede pasife al`}
+            className="absolute left-2 top-2 items-center justify-center rounded-md bg-destructive p-1.5"
+          >
+            <Icon as={ArchiveIcon} size="sm" className="text-destructive-foreground" />
+          </Pressable>
+        ) : null}
       </Box>
 
       <VStack space="sm" className="p-3">

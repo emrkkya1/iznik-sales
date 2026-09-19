@@ -151,10 +151,10 @@ export function ProductsTab({ branchId }: ProductsTabProps) {
                 <BranchProductCard
                 name={item.productName}
                 imageUrl={item.productImageUrl}
-                price={item.currentPrice ?? 0}
+                  price={item.currentPrice ?? 0}
                   isActive
                   archived={item.isArchived}
-                onPress={() => handleDeactivate(item)}
+                  onDeactivatePress={() => handleDeactivate(item)}
                 onEditPress={() => handleEditPress(item)}
               />
             ) : (
