@@ -2,7 +2,7 @@
   "expo": {
     "name": "Tarihi Iznik Firini",
     "slug": "tarihi-iznik-firini-sales",
-    "version": "1.0.2",
+    "version": "1.0.4",
     "orientation": "landscape",
     "icon": "./assets/images/iznik-firin-logo.jpg",
     "scheme": "tarihiiznikfirinisales",
@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.tarihiiznikfirini.sales",
-      "versionCode": 2,
+      "versionCode": 4,
       "icon": "./assets/images/iznik-firin-logo.jpg",
       "predictiveBackGestureEnabled": false
     },
