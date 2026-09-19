@@ -81,9 +81,9 @@ export function BranchProductCard({
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel={`${name} ürününü şubede pasife al`}
-            className="absolute left-2 top-2 items-center justify-center rounded-md bg-destructive p-1.5"
+            className="absolute left-2 top-2 items-center justify-center rounded-md bg-muted p-1.5"
           >
-            <Icon as={ArchiveIcon} size="sm" className="text-destructive-foreground" />
+            <Icon as={ArchiveIcon} size="sm" className="text-destructive" />
           </Pressable>
         ) : null}
       </Box>
