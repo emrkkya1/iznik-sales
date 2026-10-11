@@ -5,11 +5,19 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const sendManualReport = vi.fn();
+const addRecipient = vi.fn();
+const removeRecipient = vi.fn();
+const setScheduleMode = vi.fn();
 const logMutation = vi.fn();
 
 vi.mock('@/services', () => ({
   services: {
-    reportEmail: { sendManualReport: (...args: unknown[]) => sendManualReport(...args) },
+    reportEmail: {
+      sendManualReport: (...args: unknown[]) => sendManualReport(...args),
+      addRecipient: (...args: unknown[]) => addRecipient(...args),
+      removeRecipient: (...args: unknown[]) => removeRecipient(...args),
+      setScheduleMode: (...args: unknown[]) => setScheduleMode(...args),
+    },
   },
 }));
 
@@ -33,7 +41,12 @@ vi.mock('@/utils/logger', () => ({
 }));
 
 import { ReportEmailDeliveryError } from '@/services/supabase/reportEmail';
-import { useSendReportEmail } from '@/hooks/useReportEmail';
+import {
+  useAddReportRecipient,
+  useRemoveReportRecipient,
+  useSendReportEmail,
+  useSetReportScheduleMode,
+} from '@/hooks/useReportEmail';
 
 function wrapper({ children }: PropsWithChildren) {
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
@@ -43,6 +56,9 @@ function wrapper({ children }: PropsWithChildren) {
 describe('useSendReportEmail', () => {
   beforeEach(() => {
     sendManualReport.mockReset();
+    addRecipient.mockReset();
+    removeRecipient.mockReset();
+    setScheduleMode.mockReset();
     logMutation.mockReset();
   });
 
@@ -60,5 +76,42 @@ describe('useSendReportEmail', () => {
       runId: 'run-1', sentCount: 0, failedCount: 1, message: '1 alıcıya e-posta gönderilemedi.',
     });
     expect(logMutation).not.toHaveBeenCalledWith('send_report_email', 'success', expect.anything());
+  });
+
+  it('invalidates only the affected settings query after successful mutations', async () => {
+    addRecipient.mockResolvedValue('recipient-1');
+    removeRecipient.mockResolvedValue(undefined);
+    setScheduleMode.mockResolvedValue(undefined);
+    const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    const localWrapper = ({ children }: PropsWithChildren) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    const add = renderHook(() => useAddReportRecipient(), { wrapper: localWrapper });
+    const remove = renderHook(() => useRemoveReportRecipient(), { wrapper: localWrapper });
+    const schedule = renderHook(() => useSetReportScheduleMode(), { wrapper: localWrapper });
+
+    await act(async () => {
+      await add.result.current.mutateAsync('reports@example.test');
+      await remove.result.current.mutateAsync('recipient-1');
+      await schedule.result.current.mutateAsync('weekly');
+    });
+
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['report-email', 'recipients'] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['report-email', 'settings'] });
+    expect(logMutation).toHaveBeenCalledWith('set_report_schedule_mode', 'success', { mode: 'weekly' });
+  });
+
+  it('logs recipient and schedule errors without invalidating stale data', async () => {
+    const error = new Error('rejected');
+    addRecipient.mockRejectedValue(error);
+    const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    const localWrapper = ({ children }: PropsWithChildren) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    const add = renderHook(() => useAddReportRecipient(), { wrapper: localWrapper });
+
+    await act(async () => {
+      await expect(add.result.current.mutateAsync('reports@example.test')).rejects.toThrow(error);
+    });
+    expect(invalidate).not.toHaveBeenCalled();
+    expect(logMutation).toHaveBeenCalledWith('add_report_recipient', 'error', error);
   });
 });

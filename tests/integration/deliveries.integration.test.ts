@@ -1,6 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createAdminClient, createStaffClient, type AdminClient } from './_helpers/clients';
+import {
+  createAdminClient,
+  createAnonClient,
+  createStaffClient,
+  type AdminClient,
+} from './_helpers/clients';
 
 const PREFIX = `ITEST-DEL ${Date.now().toString(36)}`;
 
@@ -20,6 +25,8 @@ type FixtureIds = {
 const ids: Partial<FixtureIds> = {};
 let admin: AdminClient;
 let staff: AdminClient;
+let anon: AdminClient;
+const extraDeliveryIds: string[] = [];
 
 async function ensureCityDistrictBranch(admin: AdminClient, prefix: string) {
   const city = await admin
@@ -85,6 +92,11 @@ async function ensureProductWithPrice(admin: AdminClient, branchId: string, pref
 }
 
 async function cleanup(admin: AdminClient) {
+  if (extraDeliveryIds.length > 0) {
+    await admin.from('delivery_items').delete().in('delivery_id', extraDeliveryIds);
+    await admin.from('payments').delete().in('delivery_id', extraDeliveryIds);
+    await admin.from('deliveries').delete().in('id', extraDeliveryIds);
+  }
   if (ids.softDeletedDeliveryId) {
     await admin.from('deliveries').delete().eq('id', ids.softDeletedDeliveryId);
   }
@@ -142,6 +154,7 @@ describe('delivery lifecycle RPCs (integration)', () => {
   beforeAll(async () => {
     admin = await createAdminClient();
     staff = await createStaffClient();
+    anon = await createAnonClient();
 
     const location = await ensureCityDistrictBranch(admin, PREFIX);
     ids.cityId = location.cityId;
@@ -221,6 +234,101 @@ describe('delivery lifecycle RPCs (integration)', () => {
     ids.deliveryId = firstId;
   });
 
+  it('allows staff to create only a current-day field collection', async () => {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
+    const { data, error } = await staff.rpc('create_delivery_atomic', {
+      p_branch_id: ids.branchId!,
+      p_items: [{ product_id: ids.productId!, delivered_quantity: 2, returned_quantity: 0 }],
+      p_payment_amount: 5,
+      p_payment_type: 'field_collection',
+      p_date: today,
+      p_idempotency_key: `${PREFIX}-staff-${Date.now()}`,
+    });
+
+    expect(error).toBeNull();
+    expect(data).toBeTruthy();
+    extraDeliveryIds.push(data as string);
+
+    const { data: created, error: createdError } = await admin
+      .from('deliveries')
+      .select('user_id')
+      .eq('id', data as string)
+      .single();
+    expect(createdError).toBeNull();
+
+    const { data: staffUser, error: staffUserError } = await staff.auth.getUser();
+    expect(staffUserError).toBeNull();
+    expect(created?.user_id).toBe(staffUser.user?.id);
+  });
+
+  it('rejects staff date and payment-type escapes without inserting a delivery', async () => {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
+    const before = await admin
+      .from('deliveries')
+      .select('id', { count: 'exact', head: true })
+      .eq('branch_id', ids.branchId!);
+
+    const past = await staff.rpc('create_delivery_atomic', {
+      p_branch_id: ids.branchId!,
+      p_items: [{ product_id: ids.productId!, delivered_quantity: 1, returned_quantity: 0 }],
+      p_payment_amount: 0,
+      p_payment_type: 'field_collection',
+      p_date: '2000-01-01',
+      p_idempotency_key: `${PREFIX}-staff-past-${Date.now()}`,
+    });
+    expect(past.error?.message).toMatch(/today/i);
+
+    const bankTransfer = await staff.rpc('create_delivery_atomic', {
+      p_branch_id: ids.branchId!,
+      p_items: [{ product_id: ids.productId!, delivered_quantity: 1, returned_quantity: 0 }],
+      p_payment_amount: 0,
+      p_payment_type: 'bank_transfer',
+      p_date: today,
+      p_idempotency_key: `${PREFIX}-staff-bank-${Date.now()}`,
+    });
+    expect(bankTransfer.error?.message).toMatch(/field collections/i);
+
+    const after = await admin
+      .from('deliveries')
+      .select('id', { count: 'exact', head: true })
+      .eq('branch_id', ids.branchId!);
+    expect(after.count).toBe(before.count);
+  });
+
+  it('rejects anonymous and malformed delivery creation without partial writes', async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const before = await admin
+      .from('deliveries')
+      .select('id', { count: 'exact', head: true })
+      .eq('branch_id', ids.branchId!);
+
+    const anonymous = await anon.rpc('create_delivery_atomic', {
+      p_branch_id: ids.branchId!,
+      p_items: [{ product_id: ids.productId!, delivered_quantity: 1, returned_quantity: 0 }],
+      p_payment_amount: 0,
+      p_payment_type: 'field_collection',
+      p_date: today,
+      p_idempotency_key: `${PREFIX}-anon-${Date.now()}`,
+    });
+    expect(anonymous.error).not.toBeNull();
+
+    const emptyItems = await admin.rpc('create_delivery_atomic', {
+      p_branch_id: ids.branchId!,
+      p_items: [],
+      p_payment_amount: 0,
+      p_payment_type: 'field_collection',
+      p_date: today,
+      p_idempotency_key: `${PREFIX}-empty-${Date.now()}`,
+    });
+    expect(emptyItems.error?.message).toMatch(/at least one item/i);
+
+    const after = await admin
+      .from('deliveries')
+      .select('id', { count: 'exact', head: true })
+      .eq('branch_id', ids.branchId!);
+    expect(after.count).toBe(before.count);
+  });
+
   it('admin soft-deletes a delivery and the branch balance is recalculated', async () => {
     const today = new Date().toISOString().slice(0, 10);
     const { data: deliveryId, error: createError } = await admin.rpc('create_delivery_atomic', {
@@ -288,6 +396,37 @@ describe('delivery lifecycle RPCs (integration)', () => {
     });
     expect(error).not.toBeNull();
     expect(error?.message).toMatch(/not available/i);
+  });
+
+  it('records an admin manual payment atomically and rejects unauthorized or non-positive payments', async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const balanceBefore = await getBranchBalance(admin, ids.branchId!);
+    const { data: paymentId, error } = await admin.rpc('record_manual_payment_atomic', {
+      p_branch_id: ids.branchId!,
+      p_amount: 12.5,
+      p_payment_type: 'bank_transfer',
+      p_date: today,
+    });
+    expect(error).toBeNull();
+    expect(paymentId).toBeTruthy();
+    ids.manualPaymentId = paymentId as string;
+    expect(await getBranchBalance(admin, ids.branchId!)).toBeCloseTo(balanceBefore - 12.5, 2);
+
+    const staffResult = await staff.rpc('record_manual_payment_atomic', {
+      p_branch_id: ids.branchId!, p_amount: 1, p_payment_type: 'bank_transfer', p_date: today,
+    });
+    expect(staffResult.error?.message).toMatch(/not authorized/i);
+    const anonResult = await anon.rpc('record_manual_payment_atomic', {
+      p_branch_id: ids.branchId!, p_amount: 1, p_payment_type: 'bank_transfer', p_date: today,
+    });
+    expect(anonResult.error).not.toBeNull();
+
+    const beforeInvalid = await getBranchBalance(admin, ids.branchId!);
+    const invalid = await admin.rpc('record_manual_payment_atomic', {
+      p_branch_id: ids.branchId!, p_amount: 0, p_payment_type: 'bank_transfer', p_date: today,
+    });
+    expect(invalid.error?.message).toMatch(/positive/i);
+    expect(await getBranchBalance(admin, ids.branchId!)).toBeCloseTo(beforeInvalid, 2);
   });
 });
 
