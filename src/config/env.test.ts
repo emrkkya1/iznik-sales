@@ -27,4 +27,24 @@ describe('validateEnv', () => {
 
     expect(() => validateEnv()).toThrow('EXPO_PUBLIC_SUPABASE_ANON_KEY');
   });
+
+  it('rejects a malformed public Supabase URL', async () => {
+    vi.stubEnv('EXPO_PUBLIC_SUPABASE_URL', 'not-a-url');
+    vi.stubEnv('EXPO_PUBLIC_SUPABASE_ANON_KEY', 'public-anon-key');
+    vi.resetModules();
+
+    const { validateEnv } = await import('./env');
+
+    expect(() => validateEnv()).toThrow('EXPO_PUBLIC_SUPABASE_URL');
+  });
+
+  it('does not expose configuration before validation', async () => {
+    vi.stubEnv('EXPO_PUBLIC_SUPABASE_URL', 'https://example.supabase.co');
+    vi.stubEnv('EXPO_PUBLIC_SUPABASE_ANON_KEY', 'public-anon-key');
+    vi.resetModules();
+
+    const { getEnvConfig } = await import('./env');
+
+    expect(() => getEnvConfig()).toThrow('Environment not validated');
+  });
 });
