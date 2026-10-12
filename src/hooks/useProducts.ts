@@ -54,8 +54,8 @@ export function useCreateCatalogProduct() {
 export function useSetCatalogProductDefaultPrice() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ productId, defaultPrice }: { productId: string; defaultPrice: number }) =>
-      services.products.setCatalogProductDefaultPrice(productId, defaultPrice),
+    mutationFn: ({ productId, defaultPrice, updateBranches = false }: { productId: string; defaultPrice: number; updateBranches?: boolean }) =>
+      services.products.setCatalogProductDefaultPrice(productId, defaultPrice, updateBranches),
     onMutate: (input) => logMutation('set_catalog_product_default_price', 'start', input),
     onSuccess: (_data, input) => {
       logMutation('set_catalog_product_default_price', 'success', { id: input.productId });

@@ -9,6 +9,8 @@ import { ScrollView } from '@/components/ui/scroll-view';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
+import { Pressable } from '@/components/ui/pressable';
+import { CheckIcon, Icon } from '@/components/ui/icon';
 
 export type FormField =
   | {
@@ -31,6 +33,13 @@ export type FormField =
       name: string;
       label: string;
       type: 'boolean';
+      required?: false;
+      defaultValue?: boolean;
+    }
+  | {
+      name: string;
+      label: string;
+      type: 'checkbox';
       required?: false;
       defaultValue?: boolean;
     };
@@ -71,7 +80,7 @@ export function FormSheet({
     for (const field of fields) {
       if (initialValues && field.name in initialValues) {
         seed[field.name] = initialValues[field.name];
-      } else if (field.type === 'boolean') {
+      } else if (field.type === 'boolean' || field.type === 'checkbox') {
         seed[field.name] = field.defaultValue ?? false;
       } else {
         seed[field.name] = field.defaultValue ?? '';
@@ -96,7 +105,7 @@ export function FormSheet({
   const validity = useMemo(() => {
     const errors: Record<string, string | undefined> = {};
     for (const field of fields) {
-      if (field.type === 'boolean') continue;
+      if (field.type === 'boolean' || field.type === 'checkbox') continue;
       const raw = values[field.name];
       const text = typeof raw === 'string' ? raw.trim() : '';
       if (field.required && text === '') {
@@ -133,6 +142,21 @@ export function FormSheet({
         >
           <VStack space="md" className="p-4">
             {fields.map((field) => {
+              if (field.type === 'checkbox') {
+                const checked = Boolean(values[field.name]);
+                return (
+                  <Pressable key={field.name} accessibilityRole="checkbox" accessibilityLabel={field.label}
+                    accessibilityState={{ checked, disabled: isSubmitting }} disabled={isSubmitting}
+                    onPress={() => setValues(v => ({ ...v, [field.name]: !checked }))}>
+                    <HStack space="sm" className="items-center py-2">
+                      <Box className={`h-6 w-6 items-center justify-center rounded-md border ${checked ? 'border-primary bg-primary' : 'border-border bg-background'}`}>
+                        {checked ? <Icon as={CheckIcon} size="sm" className="text-primary-foreground" /> : null}
+                      </Box>
+                      <Text size="sm" style={{ flex: 1 }}>{field.label}</Text>
+                    </HStack>
+                  </Pressable>
+                );
+              }
               if (field.type === 'boolean') {
                 const current = Boolean(values[field.name]);
                 return (

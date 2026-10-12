@@ -49,10 +49,11 @@ export const supabaseProductRepository: ProductRepository = {
     return data;
   },
 
-  async setCatalogProductDefaultPrice(productId, defaultPrice) {
+  async setCatalogProductDefaultPrice(productId, defaultPrice, updateBranches = false) {
     const { error } = await supabaseClient.rpc('set_catalog_product_default_price', {
       p_product_id: productId,
       p_default_price: defaultPrice,
+      p_update_branches: updateBranches,
     });
     if (error) throw error;
   },
