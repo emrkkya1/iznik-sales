@@ -139,6 +139,12 @@ export interface UpdateDeliveryInput {
   date: string;
 }
 
+export interface CloseReceivablesInput {
+  branches: { branchId: string; expectedAmount: number }[];
+  paymentType: PaymentType;
+  date: string;
+}
+
 export interface ManualPaymentInput {
   branchId: string;
   amount: number;
@@ -197,7 +203,7 @@ export interface DeliveryItemWithProduct extends DeliveryItem {
 // ============================================
 
 // Summary screen range selector
-export type SummaryRange = 'week' | 'month' | 'all';
+export type SummaryRange = 'day' | 'week' | 'month' | 'all';
 export type ReportScheduleMode = 'weekly' | 'monthly' | 'disabled';
 
 export interface ReportRecipient {

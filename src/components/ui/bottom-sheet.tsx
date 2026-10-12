@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   type DimensionValue,
   Modal,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   useWindowDimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Box } from './box';
 import { Button, ButtonText } from './button';
@@ -17,8 +18,7 @@ type BottomSheetProps = {
   title: string;
   onClose: () => void;
   children: ReactNode;
-  // Caps the sheet height. Defaults to viewport height so the sheet
-  // fills the available space when `topOffset` is set.
+  // Preferred cap; always clamped to the safe viewport height.
   maxHeight?: number;
   // When true, wraps children in a ScrollView so content scrolls inside the
   // sheet when it overflows. Set false when the consumer needs its own
@@ -37,11 +37,9 @@ type BottomSheetProps = {
 // Visual contract:
 //   - Slides up from below (animationType="slide")
 //   - Title on the left, "Kapat" button on the right
-//   - No dividers between header and body, or between body and footer
+//   - Fixed header separated from the scrollable body by a thin divider
 //   - Tap on the scrim (outside the sheet) closes
-//   - The sheet body grows to fill the available space when topOffset
-//     is provided, so footer buttons always sit at the bottom of the
-//     sheet, not floating mid-screen.
+//   - Content can never push the header or its close button off-screen
 export function BottomSheet({
   open,
   title,
@@ -53,6 +51,8 @@ export function BottomSheet({
   topOffset,
 }: BottomSheetProps) {
   const { height: viewportHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const [headerHeight, setHeaderHeight] = useState(64);
 
   // Resolve topOffset (DimensionValue) into a numeric bottom margin so
   // the sheet slides up from the viewport's bottom edge by that amount.
@@ -68,16 +68,12 @@ export function BottomSheet({
     return 0;
   }
 
-  const sheetMaxHeight =
-    maxHeight ??
-    // topOffset varsa sheet viewport'un altına yapışık kalır ve
-    // yüksekliği viewport - topOffset olur; böylece içerik az olsa
-    // bile footer ekranın altına yakın durur, altta boşluk olmaz.
-    // Modal transparent modda ve expo-navigation-bar hidden ile
-    // insets.bottom zaten 0; ek pay bırakmıyoruz.
-    (topOffset !== undefined
-      ? viewportHeight - resolveTopOffset()
-      : viewportHeight);
+  // A caller's cap must never exceed the actual viewport (notably a tablet
+  // in landscape). Reserve the safe area and a visible strip of backdrop.
+  const availableHeight = Math.max(0, viewportHeight - insets.top - insets.bottom - 16);
+  const requestedHeight = maxHeight ?? viewportHeight - Math.max(0, resolveTopOffset());
+  const sheetMaxHeight = Math.min(availableHeight, Math.max(headerHeight, requestedHeight));
+  const bodyMaxHeight = Math.max(0, sheetMaxHeight - headerHeight);
 
   return (
     <Modal
@@ -91,6 +87,7 @@ export function BottomSheet({
           flex: 1,
           backgroundColor: 'rgba(0,0,0,0.5)',
           justifyContent: 'flex-end',
+          paddingBottom: insets.bottom,
         }}
         onPress={onClose}
       >
@@ -98,15 +95,20 @@ export function BottomSheet({
           onPress={(e) => e.stopPropagation()}
           style={{
             width: '100%',
-            maxHeight: sheetMaxHeight,
+             maxHeight: sheetMaxHeight,
+             flexShrink: 1,
           }}
         >
           <Box
             className="w-full rounded-t-2xl border-t border-border bg-card"
-            style={{ flexShrink: 1 }}
+            style={{ flexShrink: 1, maxHeight: sheetMaxHeight, overflow: 'hidden' }}
           >
-            <HStack className="items-center justify-between px-4 py-3">
-              <Text size="lg" bold className="text-foreground">
+            <HStack
+              style={{ flexShrink: 0 }}
+              onLayout={event => setHeaderHeight(event.nativeEvent.layout.height)}
+              className="items-center justify-between border-b border-border px-4 py-3"
+            >
+              <Text size="lg" bold numberOfLines={2} style={{ flex: 1 }} className="pr-3 text-foreground">
                 {title}
               </Text>
               <Button variant="ghost" size="sm" onPress={onClose}>
@@ -116,9 +118,10 @@ export function BottomSheet({
 
             {scrollable ? (
               <ScrollView
-                style={{ flexGrow: 0, flexShrink: 1 }}
+                style={{ flexGrow: 0, flexShrink: 1, minHeight: 0, maxHeight: bodyMaxHeight }}
                 contentContainerStyle={{
                   padding: contentPadding,
+                  maxHeight: bodyMaxHeight,
                   gap: 12,
                 }}
                 keyboardShouldPersistTaps="handled"

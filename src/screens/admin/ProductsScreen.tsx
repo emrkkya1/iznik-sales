@@ -121,7 +121,10 @@ export function ProductsScreen() {
       <FormSheet
         open={!!priceTarget}
         title="Varsayılan Fiyatı Düzenle"
-        fields={[{ name: 'price', label: 'Yeni Varsayılan Fiyat', type: 'numeric', required: true, defaultValue: String(priceTarget?.defaultPrice ?? '') }]}
+        fields={[
+          { name: 'price', label: 'Yeni Varsayılan Fiyat', type: 'numeric', required: true, defaultValue: String(priceTarget?.defaultPrice ?? '') },
+          { name: 'updateBranches', label: 'Fiyatı tüm şubelerde güncelle.', type: 'checkbox', defaultValue: false },
+        ]}
         submitLabel="Kaydet"
         onCancel={() => setPriceTarget(null)}
         isSubmitting={setPrice.isPending}
@@ -130,7 +133,7 @@ export function ProductsScreen() {
           if (!priceTarget) return;
           const price = Number(String(values.price).replace(',', '.'));
           if (!Number.isFinite(price) || price < 0) return;
-          await setPrice.mutateAsync({ productId: priceTarget.id, defaultPrice: price });
+          await setPrice.mutateAsync({ productId: priceTarget.id, defaultPrice: price, updateBranches: values.updateBranches === true });
           setPriceTarget(null);
         }}
       />

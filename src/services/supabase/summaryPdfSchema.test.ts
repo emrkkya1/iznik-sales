@@ -58,6 +58,19 @@ describe('summaryPdfSnapshotSchema', () => {
     expect(() => parseSummaryPdfSnapshot(valid())).not.toThrow();
   });
 
+  it('accepts a daily snapshot with a single calendar-day period', () => {
+    const payload = {
+      ...valid(),
+      range: 'day',
+      period: { startDate: '2026-09-03', endDate: '2026-09-03', granularity: 'day' },
+    };
+    expect(parseSummaryPdfSnapshot(payload).range).toBe('day');
+  });
+
+  it.each([null, undefined])('rejects a null or missing range (%s)', (range) => {
+    expect(() => parseSummaryPdfSnapshot({ ...valid(), range })).toThrow();
+  });
+
   it('rejects a missing required field', () => {
     const v = valid() as Record<string, unknown>;
     delete v.kpis;

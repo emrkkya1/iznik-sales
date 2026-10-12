@@ -2,9 +2,25 @@ import type { PaymentRepository } from '@/services/contracts';
 import type { ManualPaymentInput, Payment, PaymentType } from '@/types';
 
 import { supabaseClient } from './supabaseClient';
+import { parseBulkPaymentResult } from './bulkPaymentSchema';
 
 export const supabasePaymentRepository: PaymentRepository = {
-  async recordManualPayment(input: ManualPaymentInput) {
+  async closeReceivables(input, idempotencyKey) {
+    const { data, error } = await supabaseClient.rpc('close_branch_receivables', {
+      p_branches: input.branches,
+      p_payment_type: input.paymentType,
+      p_date: input.date,
+      p_idempotency_key: idempotencyKey,
+    });
+    if (error) {
+      if (error.message === 'Branch balances changed. Refresh and confirm again.') {
+        throw new Error('Şube bakiyeleri değişti. Listeyi yenileyip tekrar onaylayın.');
+      }
+      throw error;
+    }
+    return parseBulkPaymentResult(data);
+  },
+  async recordManualPayment(input: ManualPaymentInput, idempotencyKey?: string) {
     const { data, error } = await supabaseClient.rpc(
       'record_manual_payment_atomic',
       {
@@ -12,6 +28,7 @@ export const supabasePaymentRepository: PaymentRepository = {
         p_amount: input.amount,
         p_payment_type: input.paymentType,
         p_date: input.date,
+        p_idempotency_key: idempotencyKey,
       },
     );
 
