@@ -1,3 +1,5 @@
+import { useWindowDimensions } from 'react-native';
+import { Box } from '@/components/ui/box';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
@@ -57,5 +59,3 @@ export function FinancialMovementDetailSheet({ event, onClose }: { event: Financ
     </BottomSheet>
   );
 }
-import { useWindowDimensions } from 'react-native';
-import { Box } from '@/components/ui/box';
