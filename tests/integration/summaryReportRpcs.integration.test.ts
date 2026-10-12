@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { getIstanbulToday } from '../../src/utils/dates';
 
 import {
   createAdminClient,
@@ -120,7 +121,7 @@ describe('summary PDF — report_summary_pdf RPC (M25, integration)', () => {
     if (bp.error || !bp.data) throw new Error(`bp: ${bp.error?.message}`);
     ids.branchProductId = bp.data.id;
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getIstanbulToday();
     const price = await admin
       .from('branch_product_prices')
       .insert({ branch_product_id: ids.branchProductId, price: 25, start_date: today })
@@ -157,14 +158,14 @@ describe('summary PDF — report_summary_pdf RPC (M25, integration)', () => {
 
   // ── Auth checks ───────────────────────────────────────────────────────
   describe('authorization', () => {
-    it('rejects anonymous callers', async () => {
+    it.each(['all', 'day'])('rejects anonymous callers (%s)', async (range) => {
       const anon = await createAnonClient();
-      const r = await anon.rpc('report_summary_pdf', { p_range: 'all' });
+      const r = await anon.rpc('report_summary_pdf', { p_range: range });
       expect(r.error).toBeTruthy();
     });
 
-    it('rejects staff callers', async () => {
-      const r = await staff.rpc('report_summary_pdf', { p_range: 'all' });
+    it.each(['all', 'day'])('rejects staff callers (%s)', async (range) => {
+      const r = await staff.rpc('report_summary_pdf', { p_range: range });
       expect(r.error).toBeTruthy();
     });
   });
@@ -184,6 +185,60 @@ describe('summary PDF — report_summary_pdf RPC (M25, integration)', () => {
 
   // ── Happy path contracts ──────────────────────────────────────────────
   describe('admin happy path', () => {
+    it('daily reports include only today, excluding both adjacent calendar dates', async () => {
+      const today = getIstanbulToday();
+      const baseline = await admin.rpc('report_kpis', { p_range: 'day' });
+      expect(baseline.error).toBeNull();
+      const before = baseline.data as KpisShape;
+      const deliveryId = ids.deliveryIds![0]!;
+
+      for (const offset of [-1, 1]) {
+        const adjacent = new Date(`${today}T12:00:00Z`);
+        adjacent.setUTCDate(adjacent.getUTCDate() + offset);
+        const date = adjacent.toISOString().slice(0, 10);
+        try {
+          // Move one known delivery and its collection outside today's range.
+          // The other fixture delivery stays today (75 sales, 75 collected).
+          const moved = await admin.from('deliveries').update({ date }).eq('id', deliveryId);
+          expect(moved.error).toBeNull();
+          const payment = await admin.from('payments').update({ date }).eq('delivery_id', deliveryId);
+          expect(payment.error).toBeNull();
+
+          const kpis = await admin.rpc('report_kpis', { p_range: 'day' });
+          expect(kpis.error).toBeNull();
+          const current = kpis.data as KpisShape;
+          expect(Number(current.totalSales)).toBeCloseTo(Number(before.totalSales) - 250, 2);
+          expect(Number(current.totalCollection)).toBeCloseTo(Number(before.totalCollection) - 100, 2);
+          expect(Number(current.deliveredQty)).toBeCloseTo(Number(before.deliveredQty) - 10, 2);
+          expect(Number(current.returnedQty)).toBe(Number(before.returnedQty));
+
+          const series = await admin.rpc('report_daily_series', { p_range: 'day' });
+          expect(series.error).toBeNull();
+          expect(series.data).toMatchObject({
+            granularity: 'day',
+            points: [{ bucket: today, sales: Number(current.totalSales) }],
+          });
+
+          const pdf = await admin.rpc('report_summary_pdf', { p_range: 'day' });
+          expect(pdf.error).toBeNull();
+          const snap = pdf.data as SnapshotShape;
+          expect(snap.range).toBe('day');
+          expect(snap.period).toEqual({ startDate: today, endDate: today, granularity: 'day' });
+          expect(snap.dailyPoints).toHaveLength(1);
+          expect(snap.dailyPoints[0]).toMatchObject({ bucket: today, sales: Number(current.totalSales) });
+          const branch = snap.branchesBySales.find((row) => row.id === ids.branchId);
+          expect(branch).toMatchObject({ sales: 75, collection: 75 });
+          const product = snap.productsByReturnRate.find((row) => row.id === ids.productId);
+          expect(product).toMatchObject({ delivered: 5, returned: 2, returnRate: 40 });
+        } finally {
+          const restored = await admin.from('deliveries').update({ date: today }).eq('id', deliveryId);
+          expect(restored.error).toBeNull();
+          const payment = await admin.from('payments').update({ date: today }).eq('delivery_id', deliveryId);
+          expect(payment.error).toBeNull();
+        }
+      }
+    });
+
     it('returns the full snapshot contract', async () => {
       const { data, error } = await admin.rpc('report_summary_pdf', { p_range: 'all' });
       expect(error).toBeNull();

@@ -4,6 +4,7 @@ import { Text } from '@/components/ui/text';
 import type { SummaryRange } from '@/types';
 
 const SEGMENTS: { value: SummaryRange; label: string }[] = [
+  { value: 'day', label: 'Günlük' },
   { value: 'week', label: 'Bu Hafta' },
   { value: 'month', label: 'Bu Ay' },
   { value: 'all', label: 'Tüm Zamanlar' },
@@ -38,7 +39,8 @@ export function RangeSelector({ value, onChange }: RangeSelectorProps) {
             onPress={() => onChange(seg.value)}
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
-            className={`flex-1 items-center justify-center rounded-full px-3 py-1.5 ${
+            style={{ flex: 1 }}
+            className={`items-center justify-center rounded-full px-3 py-1.5 ${
               active ? 'bg-primary' : ''
             }`}
           >

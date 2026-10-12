@@ -3,6 +3,7 @@ import { FlatList, type ListRenderItemInfo } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { Box } from '@/components/ui/box';
+import { CloseReceivablesSheet } from '@/components/admin/CloseReceivablesSheet';
 import { Button, ButtonIcon, ButtonText } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import {
@@ -11,7 +12,7 @@ import {
   FilterSheetResetButton,
 } from '@/components/ui/filter-sheet';
 import { HStack } from '@/components/ui/hstack';
-import { FilterIcon, SearchIcon } from '@/components/ui/icon';
+import { CheckIcon, FilterIcon, Icon, SearchIcon } from '@/components/ui/icon';
 import { Input, InputField, InputIcon, InputSlot } from '@/components/ui/input';
 import { Pressable } from '@/components/ui/pressable';
 import { QueryError } from '@/components/ui/query-error';
@@ -20,6 +21,7 @@ import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useBranchesAnalytics } from '@/hooks';
 import { useBranchesReportExport } from '@/hooks/useBranchesReportExport';
+import { useBranchSelection } from '@/hooks/useBranchSelection';
 import { ExportSheet } from '@/components/reports/ExportSheet';
 import { ExportTriggerButton } from '@/components/reports/ExportTriggerButton';
 import { ReportFilterConfig } from '@/components/reports/ReportFilterConfig';
@@ -37,6 +39,7 @@ import {
   getBalanceLabel,
 } from '@/utils/formatters';
 import { formatRelativeDate } from '@/utils/formatRelativeDate';
+import { getSelectedReceivables, type ReceivableBranch } from '@/utils/receivables';
 
 import { BranchFilters } from './branches/BranchFilters';
 import { countActiveFilters } from './branches/branchFilters.utils';
@@ -79,6 +82,7 @@ function BranchTableHeader({
 }) {
   return (
     <HStack className="mx-6 items-center rounded-t-xl border border-border bg-muted px-3 py-1.5">
+      <Box style={{ width: 40 }} />
       {COLUMNS.map((column) => {
         const active = column.key === sort.columnKey;
         const label = active
@@ -168,6 +172,11 @@ export function BranchesTableScreen() {
     [query.data],
   );
   const totalCount = query.data?.pages[0]?.totalCount ?? 0;
+  const selectionEnabled = !query.isLoading && !query.isPlaceholderData && !query.isError && searchInput.trim() === searchQuery;
+  const selectionScope = JSON.stringify([queryFilters, searchInput.trim()]);
+  const selection = useBranchSelection(rows, selectionScope, selectionEnabled);
+  const receivables = getSelectedReceivables(selection.selectedRows);
+  const [settlement, setSettlement] = useState<{ branches: ReceivableBranch[]; skippedCount: number } | null>(null);
 
   const report = useBranchesReportExport();
   const reportTrigger = report.trigger;
@@ -236,6 +245,24 @@ export function BranchesTableScreen() {
           className="mx-6 border-x border-b border-border bg-card data-[pressed=true]:bg-accent"
         >
           <HStack className="items-center px-3 py-3">
+            <Box style={{ width: 40 }} className="items-start justify-center">
+              <Pressable
+                onPress={(event) => {
+                  event.stopPropagation();
+                  selection.toggle(item.branchId);
+                }}
+                disabled={!selectionEnabled}
+                hitSlop={8}
+                accessibilityRole="checkbox"
+                accessibilityLabel={`${item.name} seç`}
+                accessibilityState={{ checked: selection.selectedIds.has(item.branchId), disabled: !selectionEnabled }}
+                className="p-1"
+              >
+                <Box className={`h-5 w-5 items-center justify-center rounded-md border ${selection.selectedIds.has(item.branchId) ? 'border-info bg-info' : 'border-border bg-card'}`}>
+                  {selection.selectedIds.has(item.branchId) ? <Icon as={CheckIcon} size="xs" className="text-info-foreground" /> : null}
+                </Box>
+              </Pressable>
+            </Box>
             <Box style={{ flex: 1.6 }} className="items-start justify-center">
               <VStack space="xs">
                 <Text size="sm" bold numberOfLines={1} className="text-foreground">
@@ -295,7 +322,7 @@ export function BranchesTableScreen() {
         </Pressable>
       );
     },
-    [openBranch],
+    [openBranch, selection, selectionEnabled],
   );
 
   const header = useMemo(
@@ -394,6 +421,7 @@ export function BranchesTableScreen() {
         data={rows}
         keyExtractor={(row) => row.branchId}
         renderItem={renderRow}
+        extraData={selection.selectedIds}
         ListHeaderComponent={header}
         ListEmptyComponent={empty}
         ListFooterComponent={footer}
@@ -409,7 +437,32 @@ export function BranchesTableScreen() {
         onEndReachedThreshold={0.4}
         initialNumToRender={20}
         windowSize={7}
+        contentContainerStyle={{ paddingBottom: selection.selectedRows.length ? 96 : 0 }}
       />
+
+      {selection.selectedRows.length > 0 ? (
+        <HStack space="md" style={{ position: 'absolute', right: 24, bottom: 24 }}>
+          <Button variant="outline" className="bg-card shadow-lg" onPress={selection.selectAll} disabled={!selectionEnabled}>
+            <ButtonText className="text-foreground">Tümünü Seç</ButtonText>
+          </Button>
+          <Button
+            className="bg-info shadow-lg"
+            disabled={!receivables.length || !selectionEnabled}
+            onPress={() => setSettlement({ branches: receivables, skippedCount: selection.selectedRows.length - receivables.length })}
+          >
+            <ButtonText className="text-info-foreground">Alacak Kapat</ButtonText>
+          </Button>
+        </HStack>
+      ) : null}
+
+      {settlement ? (
+        <CloseReceivablesSheet
+          branches={settlement.branches}
+          skippedCount={settlement.skippedCount}
+          onClose={() => setSettlement(null)}
+          onSuccess={() => { selection.clear(); setSettlement(null); }}
+        />
+      ) : null}
 
       <ExportSheet
         reportType="branches"

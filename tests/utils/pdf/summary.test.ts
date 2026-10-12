@@ -49,6 +49,17 @@ function snapshotFixture(): SummaryPdfSnapshot {
 }
 
 describe('buildSummaryDocument', () => {
+  it('labels a daily report with its single calendar date', () => {
+    const snap = snapshotFixture();
+    snap.range = 'day';
+    snap.period = { startDate: '2026-09-03', endDate: '2026-09-03', granularity: 'day' };
+    snap.dailyPoints = [snap.dailyPoints[2]!];
+    const html = assembleReportDocument(buildSummaryDocument(snap));
+    expect(html).toContain('Günlük');
+    expect(html).toContain('03.09.2026');
+    expect(html).not.toContain('Bu Hafta');
+  });
+
   it('produces exactly two pages', () => {
     const doc = buildSummaryDocument(snapshotFixture());
     expect(doc.pages).toHaveLength(2);

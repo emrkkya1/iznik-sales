@@ -1,4 +1,5 @@
 import type { AppServices } from './contracts';
+import { supabaseFinancialMovementRepository } from './supabase/financialMovements';
 import {
   supabaseAdminLocationRepository,
   supabaseAnalyticsRepository,
@@ -32,6 +33,7 @@ export { buildReceiptSummary } from './receiptSummary';
 
 // Swap these adapters to change vendors without changing screens or hooks.
 export const services: AppServices = {
+  financialMovements: supabaseFinancialMovementRepository,
   auth: supabaseAuthRepository,
   session: supabaseSessionRepository,
   locations: supabaseLocationRepository,

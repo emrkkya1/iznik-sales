@@ -15,10 +15,10 @@ const dashboardRpcs = [
   'report_daily_series',
 ] as const;
 
-function paramsFor(name: typeof dashboardRpcs[number]) {
+function paramsFor(name: typeof dashboardRpcs[number], range = 'all') {
   return name === 'report_kpis' || name === 'report_daily_series'
-    ? { p_range: 'all' }
-    : { p_range: 'all', p_limit: 100 };
+    ? { p_range: range }
+    : { p_range: range, p_limit: 100 };
 }
 
 describe('dashboard report RPCs (integration)', () => {
@@ -33,6 +33,21 @@ describe('dashboard report RPCs (integration)', () => {
       const result = await admin.rpc(rpc, paramsFor(rpc));
       expect(result.error, rpc).toBeNull();
       expect(result.data, rpc).not.toBeNull();
+    }
+  });
+
+  it('supports the daily range in every dashboard data source', async () => {
+    for (const rpc of dashboardRpcs) {
+      const result = await admin.rpc(rpc, paramsFor(rpc, 'day'));
+      expect(result.error, rpc).toBeNull();
+      expect(result.data, rpc).not.toBeNull();
+    }
+  });
+
+  it('rejects staff and anonymous callers for daily reports', async () => {
+    for (const rpc of dashboardRpcs) {
+      expect((await staff.rpc(rpc, paramsFor(rpc, 'day'))).error, `staff ${rpc}`).not.toBeNull();
+      expect((await anon.rpc(rpc, paramsFor(rpc, 'day'))).error, `anon ${rpc}`).not.toBeNull();
     }
   });
 

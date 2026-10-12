@@ -273,7 +273,8 @@ export const PDF_STYLESHEET = `
 `;
 
 // Returns the localized display label for a `SummaryRange` value.
-export function rangeLabel(range: 'week' | 'month' | 'all'): string {
+export function rangeLabel(range: 'day' | 'week' | 'month' | 'all'): string {
+  if (range === 'day') return 'Günlük';
   if (range === 'week') return 'Bu Hafta';
   if (range === 'month') return 'Bu Ay';
   return 'Tüm Zamanlar';

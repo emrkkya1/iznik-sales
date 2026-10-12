@@ -283,3 +283,25 @@ export function useSetOpeningBalancesLocked() {
     onError: (error) => logMutation('set_opening_balances_locked', 'error', error),
   });
 }
+
+export function useRenameBranch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      services.adminLocations.renameBranch(id, name),
+    onMutate: (input) => logMutation('rename_branch', 'start', input),
+    onSuccess: async (_data, input) => {
+      logMutation('rename_branch', 'success', input);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin', 'branches'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'branch-hub', 'details', input.id] }),
+        queryClient.invalidateQueries({ queryKey: BRANCH_ANALYTICS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: ['branches'] }),
+        queryClient.invalidateQueries({ queryKey: ['branch-location', input.id] }),
+        queryClient.invalidateQueries({ queryKey: ['deliveries'] }),
+        queryClient.invalidateQueries({ queryKey: ['reports'] }),
+      ]);
+    },
+    onError: (error) => logMutation('rename_branch', 'error', error),
+  });
+}

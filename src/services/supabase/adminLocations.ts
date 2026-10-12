@@ -110,6 +110,14 @@ export const supabaseAdminLocationRepository: AdminLocationRepository = {
     if (error) throw error;
   },
 
+  async renameBranch(id, name) {
+    const { error } = await supabaseClient.rpc('rename_branch', {
+      p_branch_id: id,
+      p_name: name,
+    });
+    if (error) throw error;
+  },
+
   async setOpeningBalancesLocked(locked) {
     const { error } = await supabaseClient.rpc('set_opening_balances_locked', {
       p_locked: locked,

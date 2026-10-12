@@ -23,6 +23,7 @@ import type {
   DistrictWithCounts,
   DistributionRow,
   ManualPaymentInput,
+  CloseReceivablesInput,
   MovementRow,
   Payment,
   Product,
@@ -42,6 +43,14 @@ import type {
 import type { SummaryPdfSnapshot } from './supabase/summaryPdfSchema';
 import type { BranchReportSnapshot } from './supabase/branchesReportSchema';
 import type { BranchHubReport } from './supabase/branchHubReportSchema';
+import type { BulkPaymentResult } from './supabase/bulkPaymentSchema';
+import type { CurrentFinancialMovement, FinancialChangeInput, FinancialEvent, MovementCursor } from './supabase/financialMovementSchema';
+
+export interface FinancialMovementRepository {
+  list(cursor: MovementCursor | null, limit?: number): Promise<{ rows: FinancialEvent[]; nextCursor: MovementCursor | null }>;
+  get(kind: FinancialEvent['kind'], id: string): Promise<CurrentFinancialMovement>;
+  change(input: FinancialChangeInput, key: string): Promise<{ changed: boolean }>;
+}
 
 export interface AuthRepository {
   getSession(): Promise<AuthSession | null>;
@@ -65,7 +74,7 @@ export interface ProductRepository {
   listProducts(): Promise<Product[]>;
   listCatalogProducts(includeArchived?: boolean): Promise<CatalogProduct[]>;
   createCatalogProduct(input: { name: string; defaultPrice: number }): Promise<string>;
-  setCatalogProductDefaultPrice(productId: string, defaultPrice: number): Promise<void>;
+  setCatalogProductDefaultPrice(productId: string, defaultPrice: number, updateBranches?: boolean): Promise<void>;
   setCatalogProductArchived(productId: string, archived: boolean): Promise<void>;
   listBranchProducts(
     branchId: string,
@@ -90,7 +99,8 @@ export interface DeliveryRepository {
 }
 
 export interface PaymentRepository {
-  recordManualPayment(input: ManualPaymentInput): Promise<Payment>;
+  recordManualPayment(input: ManualPaymentInput, idempotencyKey?: string): Promise<Payment>;
+  closeReceivables(input: CloseReceivablesInput, idempotencyKey: string): Promise<BulkPaymentResult>;
 }
 
 export interface LedgerRepository {
@@ -107,6 +117,7 @@ export interface AdminLocationRepository {
   setCityActive(id: string, isActive: boolean): Promise<void>;
   setDistrictActive(id: string, isActive: boolean): Promise<void>;
   setBranchActive(id: string, isActive: boolean): Promise<void>;
+  renameBranch(id: string, name: string): Promise<void>;
   setOpeningBalancesLocked(locked: boolean): Promise<void>;
   getOpeningBalancesLocked(): Promise<boolean>;
   getBranchHubDetails(branchId: string): Promise<BranchHubDetails>;
@@ -167,6 +178,7 @@ export type PdfReportFilters = {
 };
 
 export interface AppServices {
+  financialMovements: FinancialMovementRepository;
   auth: AuthRepository;
   session: SessionRepository;
   locations: LocationRepository;
