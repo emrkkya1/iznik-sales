@@ -42,11 +42,7 @@ function SettingsTile({
   );
 }
 
-// Settings hub. Currently a placeholder — Kayıtlar lives here as a stub
-// tile (deep links to /records, which is intentionally removed from the
-// bottom nav while the dedicated Kayıtlar screen is scoped to a later
-// milestone). The Profile / Kullanıcılar / Açılış Bakiyesi sections
-// land here in PR-7.x.
+// Financial history is reached from Settings, not the bottom navigation.
 export function SettingsScreen() {
   const router = useRouter();
 
@@ -66,8 +62,8 @@ export function SettingsScreen() {
         <VStack space="sm">
           <SettingsTile
             icon={ListIcon}
-            title="Kayıtlar"
-            subtitle="Tüm teslimat kayıtları ve geçmiş düzeltmeleri"
+            title="Tüm Hareketler"
+            subtitle="Teslimatlar, tahsilatlar ve tüm düzeltmeler"
             onPress={() => router.push('/records')}
           />
           <SettingsTile
