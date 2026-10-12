@@ -56,7 +56,7 @@ const productRowSchema = z.object({
 
 export const summaryPdfSnapshotSchema = z.object({
   schemaVersion: z.literal(1),
-  range: z.enum(['week', 'month', 'all']),
+  range: z.enum(['day', 'week', 'month', 'all']),
   snapshotAt: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/),
   period: z.object({
     startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
