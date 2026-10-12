@@ -3,10 +3,13 @@ import { useLocalSearchParams } from 'expo-router';
 import { ScrollView, View } from 'react-native';
 
 import { ActionMenu, type ActionMenuItem } from '@/components/admin/ActionMenu';
+import { RenameBranchSheet } from '@/components/admin/RenameBranchSheet';
+import { ManualPaymentSheet } from '@/components/admin/ManualPaymentSheet';
 import { Box } from '@/components/ui/box';
+import { Button, ButtonIcon, ButtonText } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/error-state';
 import { HStack } from '@/components/ui/hstack';
-import { Icon, MoreVerticalIcon, TruckIcon } from '@/components/ui/icon';
+import { BanknoteIcon, Icon, MoreVerticalIcon, TruckIcon } from '@/components/ui/icon';
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { ReportFilterConfig } from '@/components/reports/ReportFilterConfig';
@@ -42,6 +45,8 @@ export function BranchHubScreen() {
   const branchId = pickFirst(params.branchId);
 
   const [activeTab, setActiveTab] = useState<TabKey>('products');
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<{ top: number; height: number } | null>(null);
   const menuRef = useRef<View>(null);
 
@@ -69,6 +74,10 @@ export function BranchHubScreen() {
 
   const menuItems: ActionMenuItem[] = data
     ? [
+        {
+          label: 'Şube Adını Düzenle',
+          onPress: () => setRenameOpen(true),
+        },
         {
           label: data.isActive ? 'Pasife Al' : 'Aktifleştir',
           onPress: () =>
@@ -98,11 +107,22 @@ export function BranchHubScreen() {
           {data ? <ActiveBadge isActive={data.isActive} /> : null}
           <Text
             size="sm"
-            className="flex-1 text-muted-foreground"
+            style={{ flex: 1 }}
+            className="text-muted-foreground"
             numberOfLines={1}
           >
             {data ? `${data.cityName} / ${data.districtName}` : '…'}
           </Text>
+          {data ? (
+            <Button
+              onPress={() => setPaymentOpen(true)}
+              disabled={isLoading}
+              accessibilityLabel="Ödeme Al"
+            >
+              <ButtonIcon as={BanknoteIcon} />
+              <ButtonText>Ödeme Al</ButtonText>
+            </Button>
+          ) : null}
           {data ? (
             <ExportTriggerButton
                label="PDF Rapor"
@@ -120,7 +140,7 @@ export function BranchHubScreen() {
               onPress={handleMenuPress}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Şübe işlem menüsü"
+              accessibilityLabel="Şube işlem menüsü"
               className="items-center justify-center rounded-md p-1"
             >
               <Icon as={MoreVerticalIcon} size="md" className="text-muted-foreground" />
@@ -221,6 +241,21 @@ export function BranchHubScreen() {
         items={menuItems}
         anchor={menuAnchor}
       />
+      {renameOpen && data ? (
+        <RenameBranchSheet
+          key={branchId}
+          branchId={branchId}
+          currentName={data.name}
+          onClose={() => setRenameOpen(false)}
+        />
+      ) : null}
+      {paymentOpen && data ? (
+        <ManualPaymentSheet
+          key={branchId}
+          branchId={branchId}
+          onClose={() => setPaymentOpen(false)}
+        />
+      ) : null}
     </Box>
   );
 }
