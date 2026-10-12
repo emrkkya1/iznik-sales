@@ -13,6 +13,10 @@ import type {
 import { BRANCH_ANALYTICS_QUERY_KEY } from './useBranchesAnalytics';
 
 function invalidateBranchData(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: ['financial-movements'] });
+  queryClient.invalidateQueries({ queryKey: ['admin', 'branch-movements'] });
+  queryClient.invalidateQueries({ queryKey: ['admin', 'branch-hub', 'details'] });
+  queryClient.invalidateQueries({ queryKey: ['reports'] });
   queryClient.invalidateQueries({ queryKey: ['deliveries'] });
   queryClient.invalidateQueries({ queryKey: ['payments'] });
   queryClient.invalidateQueries({ queryKey: ['balance'] });
@@ -90,16 +94,30 @@ export function useSoftDeleteDelivery() {
 
 export function useRecordManualPayment() {
   const queryClient = useQueryClient();
+  const attemptRef = useRef<{ inputKey: string; idempotencyKey: string } | null>(null);
 
   return useMutation({
-    mutationFn: (input: ManualPaymentInput) =>
-      services.payments.recordManualPayment(input),
+    retry: false,
+    mutationFn: (input: ManualPaymentInput) => {
+      const inputKey = JSON.stringify([input.branchId, input.amount, input.paymentType, input.date]);
+      if (!attemptRef.current || attemptRef.current.inputKey !== inputKey) {
+        attemptRef.current = { inputKey, idempotencyKey: generateIdempotencyKey() };
+      }
+      return services.payments.recordManualPayment(input, attemptRef.current.idempotencyKey);
+    },
     onMutate: (input) => {
       logMutation('recordManualPayment', 'start', { input });
     },
-    onSuccess: (data) => {
+    onSuccess: async (data, input) => {
       logMutation('recordManualPayment', 'success', { result: data });
+      attemptRef.current = null;
       invalidateBranchData(queryClient);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin', 'branch-movements', input.branchId] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'branch-hub', 'details', input.branchId] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'branches'] }),
+        queryClient.invalidateQueries({ queryKey: ['reports'] }),
+      ]);
     },
     onError: (error) => {
       logMutation('recordManualPayment', 'error', error);

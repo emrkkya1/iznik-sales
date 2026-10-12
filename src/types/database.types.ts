@@ -384,6 +384,7 @@ export type Database = {
           deletion_reason: string | null
           delivery_id: string | null
           id: string
+          idempotency_key: string | null
           payment_type: string
           user_id: string | null
         }
@@ -397,6 +398,7 @@ export type Database = {
           deletion_reason?: string | null
           delivery_id?: string | null
           id?: string
+          idempotency_key?: string | null
           payment_type: string
           user_id?: string | null
         }
@@ -410,6 +412,7 @@ export type Database = {
           deletion_reason?: string | null
           delivery_id?: string | null
           id?: string
+          idempotency_key?: string | null
           payment_type?: string
           user_id?: string | null
         }
@@ -476,6 +479,12 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      receivable_payment_batches: {
+        Row: { idempotency_key: string; user_id: string; input: Json; result: Json; created_at: string }
+        Insert: { idempotency_key: string; user_id: string; input: Json; result: Json; created_at?: string }
+        Update: { idempotency_key?: string; user_id?: string; input?: Json; result?: Json; created_at?: string }
+        Relationships: [{ foreignKeyName: "receivable_payment_batches_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "users"; referencedColumns: ["id"] }]
       }
       users: {
         Row: {
@@ -631,9 +640,26 @@ export type Database = {
           p_amount: number
           p_branch_id: string
           p_date: string
+          p_idempotency_key?: string
           p_payment_type: string
         }
         Returns: string
+      }
+      close_branch_receivables: {
+        Args: { p_branches: Json; p_payment_type: string; p_date: string; p_idempotency_key: string }
+        Returns: Json
+      }
+      list_financial_movement_events: {
+        Args: { p_limit?: number; p_cursor?: Json }
+        Returns: Json
+      }
+      get_financial_movement: {
+        Args: { p_kind: string; p_id: string }
+        Returns: Json
+      }
+      change_financial_movement: {
+        Args: { p_kind: string; p_id: string; p_action: string; p_patch: Json; p_version: string; p_key: string }
+        Returns: Json
       }
       report_branch_distribution: {
         Args: { p_limit?: number; p_range: string }
@@ -652,6 +678,10 @@ export type Database = {
       report_branch_income: {
         Args: { p_limit?: number; p_range: string }
         Returns: Json
+      }
+      rename_branch: {
+        Args: { p_branch_id: string; p_name: string }
+        Returns: undefined
       }
       report_branch_return_rate: {
         Args: { p_limit?: number; p_range: string }
@@ -719,7 +749,7 @@ export type Database = {
         Returns: undefined
       }
       set_catalog_product_default_price: {
-        Args: { p_default_price: number; p_product_id: string }
+        Args: { p_default_price: number; p_product_id: string; p_update_branches?: boolean }
         Returns: undefined
       }
       set_city_active: {

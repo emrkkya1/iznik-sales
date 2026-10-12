@@ -74,7 +74,7 @@ describe('financial mutation hooks', () => {
     const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
     const invalidate = vi.spyOn(client, 'invalidateQueries');
     const wrapper = createWrapper(client);
-    generateIdempotencyKey.mockReturnValueOnce('key-1').mockReturnValueOnce('key-2');
+    generateIdempotencyKey.mockReturnValueOnce('key-1').mockReturnValueOnce('payment-key').mockReturnValueOnce('key-2');
     createDelivery.mockResolvedValue({ deliveryId: 'delivery-1' });
     updateDelivery.mockResolvedValue(undefined);
     softDeleteDelivery.mockResolvedValue(undefined);
@@ -101,6 +101,13 @@ describe('financial mutation hooks', () => {
     expect(logMutation).toHaveBeenCalledWith('updateDelivery', 'success', { result: undefined });
     expect(logMutation).toHaveBeenCalledWith('softDeleteDelivery', 'success', { id: 'delivery-1' });
     expect(logMutation).toHaveBeenCalledWith('recordManualPayment', 'success', { result: { id: 'payment-1' } });
+    expect(recordManualPayment).toHaveBeenCalledWith({
+      branchId: 'branch-1', amount: 5, paymentType: 'bank_transfer', date: '2026-09-19',
+    }, 'payment-key');
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['admin', 'branch-movements', 'branch-1'] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['admin', 'branch-hub', 'details', 'branch-1'] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['admin', 'branches'] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['reports'] });
     expectFinancialInvalidation(invalidate);
 
     await act(async () => {
@@ -144,6 +151,24 @@ describe('financial mutation hooks', () => {
       await create.result.current.mutateAsync(deliveryInput);
     });
     expect(createDelivery).toHaveBeenLastCalledWith(deliveryInput, 'retry-key');
-    expect(generateIdempotencyKey).toHaveBeenCalledTimes(1);
+    expect(generateIdempotencyKey).toHaveBeenCalledTimes(2);
+  });
+
+  it('reuses the manual-payment retry key after failure and renews it for new payments', async () => {
+    const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    const wrapper = createWrapper(client);
+    const input = { branchId: 'branch-1', amount: 5, paymentType: 'bank_transfer' as const, date: '2026-09-19' };
+    generateIdempotencyKey.mockReturnValueOnce('retry-payment').mockReturnValueOnce('next-payment').mockReturnValueOnce('changed-payment');
+    recordManualPayment.mockRejectedValueOnce(new Error('Response lost')).mockResolvedValue({ id: 'payment-1' });
+    const payment = renderHook(() => useRecordManualPayment(), { wrapper });
+    await act(async () => { await expect(payment.result.current.mutateAsync(input)).rejects.toThrow('Response lost'); });
+    await act(async () => { await payment.result.current.mutateAsync(input); });
+    expect(recordManualPayment).toHaveBeenNthCalledWith(1, input, 'retry-payment');
+    expect(recordManualPayment).toHaveBeenNthCalledWith(2, input, 'retry-payment');
+    recordManualPayment.mockRejectedValueOnce(new Error('Failed'));
+    await act(async () => { await expect(payment.result.current.mutateAsync(input)).rejects.toThrow('Failed'); });
+    expect(recordManualPayment).toHaveBeenLastCalledWith(input, 'next-payment');
+    await act(async () => { await payment.result.current.mutateAsync({ ...input, amount: 10 }); });
+    expect(recordManualPayment).toHaveBeenLastCalledWith({ ...input, amount: 10 }, 'changed-payment');
   });
 });

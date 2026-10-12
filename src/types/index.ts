@@ -21,6 +21,7 @@ export type {
   CreateDeliveryInput,
   UpdateDeliveryInput,
   ManualPaymentInput,
+  CloseReceivablesInput,
   ReceiptSummary,
   BranchProductWithPrice,
   BranchProductWithStatus,

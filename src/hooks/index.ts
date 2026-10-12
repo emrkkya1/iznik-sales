@@ -52,6 +52,7 @@ export {
   useSetCityActive,
   useSetDistrictActive,
   useSetBranchActive,
+  useRenameBranch,
   useSetOpeningBalancesLocked,
 } from './useAdminLocations';
 export { useAuthStore } from '@/store';
