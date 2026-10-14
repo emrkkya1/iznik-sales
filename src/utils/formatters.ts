@@ -1,3 +1,5 @@
+import { ISTANBUL_TIME_ZONE, parseDisplayDate } from './dates';
+
 const currencyFormatter = new Intl.NumberFormat('tr-TR', {
   style: 'currency',
   currency: 'TRY',
@@ -8,7 +10,7 @@ export function formatCurrency(value: number): string {
 }
 
 export function formatDate(value: Date | string): string {
-  return new Intl.DateTimeFormat('tr-TR').format(new Date(value));
+  return new Intl.DateTimeFormat('tr-TR', { timeZone: ISTANBUL_TIME_ZONE }).format(parseDisplayDate(value));
 }
 
 // Bakiye gösterimi için mutlak tutar. Bakiye tek bir değer olarak sunulur;

@@ -4,6 +4,7 @@ import {
   createAdminClient,
   createAnonClient,
   createStaffClient,
+  serviceClient,
   type AdminClient,
 } from './_helpers/clients';
 
@@ -76,17 +77,23 @@ async function ensureProductWithPrice(admin: AdminClient, branchId: string, pref
     throw new Error(`branch_product insert failed: ${branchProduct.error?.message}`);
   }
 
-  const today = new Date().toISOString().slice(0, 10);
   const price = await admin
     .from('branch_product_prices')
     .insert({
       branch_product_id: branchProduct.data.id,
-      price: 10,
-      start_date: today,
+      price: 5,
+      start_date: '2000-01-01',
+      end_date: '2026-01-01',
     })
     .select('id')
     .single();
   if (price.error || !price.data) throw new Error(`price insert failed: ${price.error?.message}`);
+  const currentPrice = await admin.from('branch_product_prices').insert({
+    branch_product_id: branchProduct.data.id,
+    price: 10,
+    start_date: '2026-01-02',
+  });
+  if (currentPrice.error) throw currentPrice.error;
 
   return { productId: product.data.id, branchProductId: branchProduct.data.id };
 }
@@ -234,7 +241,7 @@ describe('delivery lifecycle RPCs (integration)', () => {
     ids.deliveryId = firstId;
   });
 
-  it('allows staff to create only a current-day field collection', async () => {
+  it('allows staff to create a current-day field collection', async () => {
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
     const { data, error } = await staff.rpc('create_delivery_atomic', {
       p_branch_id: ids.branchId!,
@@ -261,22 +268,54 @@ describe('delivery lifecycle RPCs (integration)', () => {
     expect(created?.user_id).toBe(staffUser.user?.id);
   });
 
-  it('rejects staff date and payment-type escapes without inserting a delivery', async () => {
+  it('allows backdated staff deliveries at the historical price with dated collections and audit history', async () => {
+    const input = {
+      p_branch_id: ids.branchId!,
+      p_items: [{ product_id: ids.productId!, delivered_quantity: 3, returned_quantity: 1 }],
+      p_payment_amount: 5,
+      p_payment_type: 'field_collection',
+      p_date: '2025-12-31',
+      p_idempotency_key: `${PREFIX}-staff-backdated`,
+    };
+    const balanceBefore = await getBranchBalance(admin, ids.branchId!);
+    const { data: id, error } = await staff.rpc('create_delivery_atomic', input);
+    expect(error).toBeNull();
+    expect(id).toBeTruthy();
+    extraDeliveryIds.push(id as string);
+    const delivery = await admin.from('deliveries').select('date,total_sales_amount,user_id').eq('id', id).single();
+    expect(delivery.data).toMatchObject({ date: input.p_date, total_sales_amount: 10, user_id: (await staff.auth.getUser()).data.user?.id });
+    const items = await admin.from('delivery_items').select('unit_price').eq('delivery_id', id).single();
+    expect(items.data?.unit_price).toBe(5);
+    const payment = await admin.from('payments').select('date,amount').eq('delivery_id', id).single();
+    expect(payment.data).toMatchObject({ date: input.p_date, amount: 5 });
+    expect(await getBranchBalance(admin, ids.branchId!)).toBeCloseTo(balanceBefore + 5, 2);
+    const retry = await staff.rpc('create_delivery_atomic', input);
+    expect(retry.error).toBeNull();
+    expect(retry.data).toBe(id);
+    expect(await getBranchBalance(admin, ids.branchId!)).toBeCloseTo(balanceBefore + 5, 2);
+    const events = await serviceClient().from('financial_movement_events').select('action').eq('record_id', id);
+    expect(events.error).toBeNull();
+    expect(events.data).toEqual([{ action: 'create' }]);
+    const edit = await staff.rpc('update_delivery_atomic', { p_delivery_id: id, p_items: input.p_items, p_date: input.p_date });
+    expect(edit.error?.message).toMatch(/today/i);
+  });
+
+  it('rejects staff future dates and bank transfers without inserting a delivery', async () => {
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' });
     const before = await admin
       .from('deliveries')
       .select('id', { count: 'exact', head: true })
       .eq('branch_id', ids.branchId!);
 
-    const past = await staff.rpc('create_delivery_atomic', {
+    const future = await staff.rpc('create_delivery_atomic', {
       p_branch_id: ids.branchId!,
       p_items: [{ product_id: ids.productId!, delivered_quantity: 1, returned_quantity: 0 }],
       p_payment_amount: 0,
       p_payment_type: 'field_collection',
-      p_date: '2000-01-01',
-      p_idempotency_key: `${PREFIX}-staff-past-${Date.now()}`,
+      p_date: '2999-01-01',
+      p_idempotency_key: `${PREFIX}-staff-future-${Date.now()}`,
     });
-    expect(past.error?.message).toMatch(/today/i);
+    expect(future.error?.message).toMatch(/future/i);
 
     const bankTransfer = await staff.rpc('create_delivery_atomic', {
       p_branch_id: ids.branchId!,
@@ -326,6 +365,21 @@ describe('delivery lifecycle RPCs (integration)', () => {
       .from('deliveries')
       .select('id', { count: 'exact', head: true })
       .eq('branch_id', ids.branchId!);
+    expect(after.count).toBe(before.count);
+  });
+
+  it('rejects missing dates and missing historical prices without leaving partial records', async () => {
+    const before = await admin.from('deliveries').select('id', { count: 'exact', head: true }).eq('branch_id', ids.branchId!);
+    for (const date of [null, '1999-12-31']) {
+      const result = await staff.rpc('create_delivery_atomic', {
+        p_branch_id: ids.branchId!,
+        p_items: [{ product_id: ids.productId!, delivered_quantity: 1, returned_quantity: 0 }],
+        p_payment_amount: 5, p_payment_type: 'field_collection', p_date: date,
+        p_idempotency_key: `${PREFIX}-missing-${date}`,
+      });
+      expect(result.error?.message).toMatch(date === null ? /date is required/i : /no price found/i);
+    }
+    const after = await admin.from('deliveries').select('id', { count: 'exact', head: true }).eq('branch_id', ids.branchId!);
     expect(after.count).toBe(before.count);
   });
 

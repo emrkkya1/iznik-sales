@@ -7,7 +7,7 @@
  * using the same hex values as `src/utils/chartPalette.ts` so the report
  * matches the dashboard visually.
  *
- * Page size: A4 landscape (842 × 595 px @ 72dpi). The `@page` rule below
+ * Page size: portrait A4 (595 × 842 px @ 72dpi). The `@page` rule below
  * only affects Android (iOS uses its own margin config passed to
  * printToFileAsync). Each document is a fixed sequence of `.pdf-page`
  * sections — every `.pdf-page` maps 1:1 to a PDF page, so pagination is
@@ -44,23 +44,23 @@ export const BRAND_COLORS = {
 // Categorical palette used by donut / bar / line series.
 export const PDF_CHART_PALETTE = [...CHART_PALETTE] as readonly string[];
 
-// Per-report constants. A4 landscape @ 72dpi.
-export const PAGE_WIDTH = 842;
-export const PAGE_HEIGHT = 595;
-export const PAGE_MARGIN_PX = 24;
+// Per-report constants. Portrait A4 @ 72dpi, matching ordinary print dialogs.
+export const PAGE_WIDTH = 595;
+export const PAGE_HEIGHT = 842;
+export const PAGE_MARGIN_PX = 28; // 10mm, rounded at 72dpi.
 
-// A4 paper ratio (297mm × 210mm). Exact — the PDF 842/595 ratio differs by
+// Portrait A4 paper ratio (210mm × 297mm). Exact — the PDF 595/842 ratio differs by
 // ~0.06% due to PDF point rounding. Kept for any aspect-ratio consumers.
-export const A4_ASPECT_RATIO = 297 / 210;
+export const A4_ASPECT_RATIO = 210 / 297;
 
 // Single shared stylesheet — injected into every PDF HTML document.
 // Keep the selector list flat; nesting hurts cross-WebView compatibility.
 //
 // Android WebView does not consistently honor a pixel-sized @page. Use native
-// paper units and the landscape keyword so the HTML section and PDF canvas
+// paper units and the portrait keyword so the HTML section and PDF canvas
 // share the same physical A4 geometry on both Android and iOS.
 export const PDF_STYLESHEET = `
-  @page { size: A4 landscape; margin: 0; }
+  @page { size: A4 portrait; margin: 0; }
 
   * { box-sizing: border-box; }
   html, body {
@@ -69,14 +69,14 @@ export const PDF_STYLESHEET = `
     background: ${BRAND_COLORS.background};
     color: ${BRAND_COLORS.foreground};
     font-family: 'Helvetica', 'Arial', sans-serif;
-    font-size: 10px;
+    font-size: 11px;
     line-height: 1.35;
   }
 
   .pdf-page {
-    width: 297mm;
-    height: 210mm;
-    padding: 8mm;
+    width: 210mm;
+    height: 297mm;
+    padding: 10mm 10mm 8mm;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -87,31 +87,28 @@ export const PDF_STYLESHEET = `
   .pdf-page:last-child { page-break-after: auto; }
 
   .page-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    border-bottom: 1px solid ${BRAND_COLORS.border};
+    flex-shrink: 0;
+    border-bottom: 2px solid ${BRAND_COLORS.primary};
     padding-bottom: 10px;
     margin-bottom: 12px;
   }
   .page-brand {
-    font-size: 8px;
+    font-size: 9px;
     color: ${BRAND_COLORS.mutedForeground};
     text-transform: uppercase;
     letter-spacing: 0.8px;
   }
   .page-title {
     margin: 2px 0 0;
-    font-size: 16px;
+    font-size: 20px;
     font-weight: 700;
     color: ${BRAND_COLORS.foreground};
   }
   .page-context {
     font-size: 9px;
     color: ${BRAND_COLORS.mutedForeground};
-    text-align: right;
-    white-space: nowrap;
+    margin-top: 6px;
+    overflow-wrap: anywhere;
   }
 
   .pdf-page-body {
@@ -120,23 +117,26 @@ export const PDF_STYLESHEET = `
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    padding-bottom: 12mm;
+    padding-bottom: 8mm;
   }
 
   .page-footer {
-    position: absolute;
-    left: 8mm;
-    right: 8mm;
-    bottom: 4mm;
+    /* The body fills unused space; footer remains in flow on every page.
+       Unlike fixed positioning this cannot repeat/overlap report content. */
+    flex: 0 0 auto;
+    margin-top: auto;
     padding-top: 6px;
     border-top: 1px solid ${BRAND_COLORS.border};
     display: flex;
     justify-content: space-between;
-    font-size: 7.5px;
+    gap: 12px;
+    font-size: 8px;
     color: ${BRAND_COLORS.mutedForeground};
   }
+  .page-footer span:first-child { min-width: 0; overflow-wrap: anywhere; }
+  .page-footer span:last-child { flex-shrink: 0; white-space: nowrap; }
 
-  .section { margin-bottom: 12px; }
+  .section { margin-bottom: 14px; flex-shrink: 0; min-width: 0; }
   .section:last-child { margin-bottom: 0; }
   .section-title {
     font-size: 11px;
@@ -155,6 +155,8 @@ export const PDF_STYLESHEET = `
   .strong  { font-weight: 700; }
 
   .row { display: flex; flex-direction: row; }
+  .stack { display: flex; flex-direction: column; gap: 12px; }
+  .stack > .grow { flex: 0 0 auto; }
   .col { display: flex; flex-direction: column; }
   .grow { flex: 1 1 auto; min-width: 0; }
   .gap-4 { gap: 4px; }
@@ -189,6 +191,7 @@ export const PDF_STYLESHEET = `
     font-size: 16px;
     font-weight: 700;
     color: ${BRAND_COLORS.foreground};
+    overflow-wrap: anywhere;
   }
   .kpi .sub {
     font-size: 8.5px;
@@ -200,7 +203,7 @@ export const PDF_STYLESHEET = `
   table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 9px;
+    font-size: 10px;
   }
   thead th {
     text-align: left;
@@ -220,6 +223,11 @@ export const PDF_STYLESHEET = `
   }
   tbody tr { page-break-inside: avoid; }
   tbody tr:last-child td { border-bottom: none; }
+  tbody tr:nth-child(even) { background: ${BRAND_COLORS.muted}; }
+  .branch-list-table, .product-table { table-layout: fixed; }
+  .branch-list-table th, .branch-list-table td,
+  .product-table th, .product-table td { overflow-wrap: anywhere; }
+  .cell-context { display: block; margin-top: 2px; font-size: 9px; color: ${BRAND_COLORS.mutedForeground}; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; }
   th.num { text-align: right; }
   td.destruct { color: ${BRAND_COLORS.destructive}; font-weight: 700; }
@@ -255,7 +263,8 @@ export const PDF_STYLESHEET = `
     padding: 16px 0;
     font-size: 9px;
   }
-  svg { display: block; }
+  svg { display: block; max-width: 100%; }
+  .chart-wrap svg { width: 100%; height: auto; }
 
   /* Chips / badges */
   .chip {

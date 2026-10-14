@@ -31,7 +31,8 @@ export async function renderPdf(
     html,
     width: PAGE_WIDTH,
     height: PAGE_HEIGHT,
-    // Margins are handled inside each `.pdf-page` (24px padding); iOS uses
+    // Portrait A4 matches the HTML page and normal A4 print settings.
+    // Margins are handled inside each `.pdf-page`; iOS uses
     // these options, Android uses the @page rule in styles.ts. Both are zero
     // so the page geometry is byte-identical across platforms.
     margins: { left: 0, right: 0, top: 0, bottom: 0 },

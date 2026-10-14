@@ -11,7 +11,7 @@ vi.mock('react-native', () => ({
   useWindowDimensions: () => ({ height: state.height, width: 1024 }),
   Modal: ({ children, visible, onRequestClose }: PropsWithChildren<{ visible: boolean; onRequestClose: () => void }>) => visible ? <div><button onClick={onRequestClose}>Android back</button>{children}</div> : null,
   Pressable: ({ children, onPress, style }: PropsWithChildren<{ onPress: (event: { stopPropagation: () => void }) => void; style: CSSProperties }>) => <div style={style} onClick={onPress} data-testid={style.flex === 1 ? 'sheet-backdrop' : 'sheet-shell'}>{children}</div>,
-  ScrollView: ({ children, style }: PropsWithChildren<{ style: CSSProperties }>) => <div data-testid="sheet-scroll" style={style}>{children}</div>,
+  ScrollView: ({ children, style, contentContainerStyle }: PropsWithChildren<{ style: CSSProperties; contentContainerStyle: CSSProperties }>) => <div data-testid="sheet-scroll" style={style}><div data-testid="sheet-scroll-content" style={contentContainerStyle}>{children}</div></div>,
 }));
 vi.mock('./box', () => ({ Box: ({ children, style }: PropsWithChildren<{ style: CSSProperties }>) => <div style={style} data-testid="sheet-surface">{children}</div> }));
 vi.mock('./hstack', () => ({ HStack: ({ children, style, onLayout }: PropsWithChildren<{ style: CSSProperties; onLayout: (event: Layout) => void }>) => { state.layout = onLayout; return <div data-testid="sheet-header" style={style}>{children}</div>; } }));
@@ -21,6 +21,12 @@ afterEach(cleanup);
 beforeEach(() => { state.height = 360; state.top = 24; state.bottom = 16; state.layout = null; });
 
 describe('BottomSheet viewport safety', () => {
+  it('caps the viewport but lets long form content grow so its save button can be reached', () => {
+    render(<BottomSheet open title="Yeni Şube" onClose={vi.fn()} maxHeight={760}><div style={{ height: 1200 }}>Products</div><button>Şube Oluştur</button></BottomSheet>);
+    expect(screen.getByTestId('sheet-scroll').style.maxHeight).toBe('240px');
+    expect(screen.getByTestId('sheet-scroll-content').style.maxHeight).toBe('');
+    expect(screen.getByRole('button', { name: 'Şube Oluştur' })).toBeTruthy();
+  });
   it('clamps oversized sheets and gives the body only the space below the fixed header', () => {
     render(<BottomSheet open title="Düzenleme" onClose={vi.fn()} maxHeight={720}><div>Long before/after content</div></BottomSheet>);
     expect(screen.getByTestId('sheet-shell').style.maxHeight).toBe('304px');

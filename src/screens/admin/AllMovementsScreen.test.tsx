@@ -44,6 +44,12 @@ afterEach(cleanup);
 beforeEach(() => { mocks.scroll.mockReset(); mocks.rows = [base]; });
 
 describe('AllMovementsScreen history rows', () => {
+  it('shows the Istanbul timestamp while keeping the delivery business date unchanged', () => {
+    mocks.rows = [{ ...base, occurredAt: '2026-10-12T21:15:00Z' }];
+    render(<AllMovementsScreen />);
+    expect(screen.getByTestId('event-original').textContent).toContain('13.10.2026 00:15:00');
+    expect(screen.getByTestId('event-original').textContent).toContain('Tarih: 12.10.2026');
+  });
   it('updates the original row while displaying separate pen/deletion rows for the same record', () => {
     mocks.rows = [
       { ...base, id: 'deleted', action: 'delete', before: { ...snapshot, amount: 30 }, after: { ...snapshot, amount: 30, deleted: true }, canManage: false },

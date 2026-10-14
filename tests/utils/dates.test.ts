@@ -8,6 +8,9 @@ import {
   parseIsoDate,
   formatIsoDate,
   getDatePresetRange,
+  formatTime,
+  parseDisplayDate,
+  formatDateBucketLabel,
 } from '@/utils/dates';
 
 describe('getIstanbulToday', () => {
@@ -110,11 +113,11 @@ describe('parseIsoDate / formatIsoDate', () => {
 describe('formatDateTime', () => {
   it('strips fractional seconds from a Supabase-style timestamp', () => {
     const formatted = formatDateTime('2026-08-22T13:52:04.356532+00');
-    expect(formatted).toMatch(/13:52:04/);
+    expect(formatted).toMatch(/16:52:04/);
     expect(formatted).not.toMatch(/\.356532/);
   });
 
-  it('strips the timezone designator', () => {
+  it('does not double-shift timestamps already in Istanbul time', () => {
     const formatted = formatDateTime('2026-08-22T13:52:04+03:00');
     expect(formatted).not.toMatch(/03:00/);
     expect(formatted).toMatch(/13:52:04/);
@@ -128,7 +131,7 @@ describe('formatDateTime', () => {
 
   it('handles a timestamp without milliseconds', () => {
     const formatted = formatDateTime('2026-08-22T13:52:04Z');
-    expect(formatted).toMatch(/13:52:04/);
+    expect(formatted).toMatch(/16:52:04/);
   });
 
   it('returns just the formatted date when there is no time component', () => {
@@ -141,5 +144,51 @@ describe('formatDateTime', () => {
 
   it('returns empty string for empty input', () => {
     expect(formatDateTime('')).toBe('');
+  });
+
+  it.each(['UTC', 'America/Los_Angeles', 'Asia/Tokyo'])('uses Istanbul time on a %s device', (zone) => {
+    const previous = process.env.TZ;
+    process.env.TZ = zone;
+    try {
+      expect(formatDateTime('2026-12-31T21:15:04Z')).toBe('01.01.2027 00:15:04');
+      expect(formatDateTime('2027-01-01T00:15:04+03:00')).toBe('01.01.2027 00:15:04');
+      expect(formatDateTime('2026-12-31 21:15:04.123456+00')).toBe('01.01.2027 00:15:04');
+      expect(formatDateTime('2026-12-31T21:15:04.123')).toBe('31.12.2026 21:15:04');
+      expect(formatDateForDisplay('2026-12-31T21:15:04Z')).toBe('01.01.2027');
+      expect(formatDateForDisplay('2026-12-31')).toBe('31.12.2026');
+      expect(formatTime('2026-12-31T21:00:00Z')).toBe('00:00');
+      expect(formatDateTime('2026-08-22T12:00:00-04:00')).toBe('22.08.2026 19:00:00');
+    } finally {
+      if (previous === undefined) delete process.env.TZ;
+      else process.env.TZ = previous;
+    }
+  });
+});
+
+describe('parseDisplayDate', () => {
+  it.each([
+    ['2026-08-22', '2026-08-21T21:00:00.000Z'],
+    ['2026-08-22T13:52:04.123', '2026-08-22T10:52:04.123Z'],
+    ['2026-08-22 13:52:04.123456+00', '2026-08-22T13:52:04.123Z'],
+    ['2026-08-22T13:52:04+0300', '2026-08-22T10:52:04.000Z'],
+  ])('parses %s consistently', (input, expected) => {
+    expect(parseDisplayDate(input).toISOString()).toBe(expected);
+  });
+  it('preserves Date instants and returns an invalid Date for malformed input', () => {
+    const date = new Date('2026-08-22T12:00:00Z');
+    expect(parseDisplayDate(date)).toBe(date);
+    expect(Number.isNaN(parseDisplayDate('invalid').getTime())).toBe(true);
+    expect(formatTime('invalid')).toBe('');
+    expect(formatTime('')).toBe('');
+  });
+});
+
+describe('formatDateBucketLabel', () => {
+  it('handles Istanbul day, month, and ISO-week rollover', () => {
+    expect(formatDateBucketLabel('2026-12-31T21:30:00Z', 'day')).toBe('01 Oca');
+    expect(formatDateBucketLabel('2026-12-31T21:30:00Z', 'month')).toBe('Oca 27');
+    expect(formatDateBucketLabel('2027-01-03T21:30:00Z', 'week')).toBe('H1');
+    expect(formatDateBucketLabel('2027-01-03', 'week')).toBe('H53');
+    expect(formatDateBucketLabel('invalid', 'day')).toBe('invalid');
   });
 });
