@@ -1,6 +1,23 @@
 // Date helpers that use Europe/Istanbul timezone for business rules.
 
-const ISTANBUL_TIME_ZONE = 'Europe/Istanbul';
+export const ISTANBUL_TIME_ZONE = 'Europe/Istanbul';
+
+// Business dates and zone-less legacy timestamps are Istanbul wall time.
+// Zoned timestamps represent instants: preserve their offset when parsing.
+// Normalize PostgreSQL's space separator, microseconds, and short +00 offset
+// to ISO syntax supported consistently by Hermes and browsers.
+export function parseDisplayDate(value: string | Date): Date {
+  if (value instanceof Date) return value;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date(`${value}T00:00:00+03:00`);
+  let iso = value.replace(/^(\d{4}-\d{2}-\d{2}) /, '$1T')
+    .replace(/(\.\d{3})\d+/, '$1')
+    .replace(/([+-]\d{2})(\d{2})$/, '$1:$2');
+  if (/T\d{2}:\d{2}/.test(iso)) {
+    if (/[+-]\d{2}$/.test(iso)) iso += ':00';
+    if (!/(?:Z|[+-]\d{2}:?\d{2})$/i.test(iso)) iso += '+03:00';
+  }
+  return new Date(iso);
+}
 
 interface IstanbulParts {
   year: number;
@@ -84,20 +101,17 @@ export function canEditDelivery(deliveryDate: string): boolean {
   return hour < 23 || (hour === 23 && minute < 59);
 }
 
-// Formats a date for display in Turkish locale. Accepts both YYYY-MM-DD
-// (returned by getIstanbulToday / parseIsoDate) and full ISO timestamps
-// (returned by Supabase RPCs for columns like branches.created_at).
-// The regex prefixes on the date portion and ignores the time/zone tail,
-// which keeps the constructor from receiving NaN month/day values.
+// Date-only values keep their business date; instants use Istanbul's date,
+// including rollover at UTC 21:00. Never depend on the device timezone.
 export function formatDateForDisplay(date: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(date);
-  if (!match) return date; // pass through non-date strings unchanged
-  const [, year, month, day] = match;
+  const parsed = parseDisplayDate(date);
+  if (Number.isNaN(parsed.getTime())) return date;
   return new Intl.DateTimeFormat('tr-TR', {
+    timeZone: ISTANBUL_TIME_ZONE,
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-  }).format(new Date(Number(year), Number(month) - 1, Number(day)));
+  }).format(parsed);
 }
 
 // YYYY-MM-DD -> Date using local calendar. Noon avoids any UTC day-shift when
@@ -115,16 +129,44 @@ export function formatIsoDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-// Formats a Supabase-style ISO timestamp ("YYYY-MM-DDTHH:mm:ss[.fff](Z|±HH:MM)")
-// as `<display-date> HH:mm:ss` for UI. The fractional seconds and the trailing
-// timezone designator are stripped — the date comes from `formatDateForDisplay`
-// (already tr-TR localized) and the time is fixed-width hh:mm:ss.
+export function formatTime(iso: string, includeSeconds = false): string {
+  if (!iso) return '';
+  const date = parseDisplayDate(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('tr-TR', {
+    timeZone: ISTANBUL_TIME_ZONE,
+    hour: '2-digit', minute: '2-digit',
+    ...(includeSeconds ? { second: '2-digit' as const } : {}),
+    hourCycle: 'h23',
+  }).format(date);
+}
+
+// Convert the instant, not just its textual clock portion.
 export function formatDateTime(iso: string): string {
   if (!iso) return '';
-  const [datePart, timePart] = iso.split('T');
-  const date = formatDateForDisplay(datePart ?? iso);
-  if (!timePart) return date;
-  const hhmm = timePart.split(/[+\-Z]/)[0] ?? '';
-  const timeOnly = hhmm.split('.')[0];
-  return timeOnly ? `${date} ${timeOnly}` : date;
+  const date = formatDateForDisplay(iso);
+  if (!/[T ]\d{2}:\d{2}/.test(iso)) return date;
+  const time = formatTime(iso, true);
+  return time ? `${date} ${time}` : date;
+}
+
+// Shared chart labels for screen and PDF; ISO-week arithmetic is UTC-only
+// after extracting the correct Istanbul calendar date.
+export function formatDateBucketLabel(bucket: string, granularity: 'day' | 'week' | 'month'): string {
+  const date = parseDisplayDate(bucket);
+  if (Number.isNaN(date.getTime())) return bucket;
+  if (granularity !== 'week') {
+    return new Intl.DateTimeFormat('tr-TR', {
+      timeZone: ISTANBUL_TIME_ZONE,
+      month: 'short',
+      ...(granularity === 'day' ? { day: '2-digit' as const } : { year: '2-digit' as const }),
+    }).format(date);
+  }
+  const { year, month, day } = getIstanbulParts(date);
+  const tmp = new Date(Date.UTC(year, month - 1, day));
+  const dayNum = (tmp.getUTCDay() + 6) % 7;
+  tmp.setUTCDate(tmp.getUTCDate() - dayNum + 3);
+  const firstThursday = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 4));
+  const week = 1 + Math.round(((tmp.getTime() - firstThursday.getTime()) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7);
+  return `H${week}`;
 }

@@ -11,6 +11,7 @@ import { VStack } from '@/components/ui/vstack';
 import {
   formatDateForDisplay,
   formatIsoDate,
+  getIstanbulToday,
   parseIsoDate,
 } from '@/utils/dates';
 
@@ -79,7 +80,7 @@ export function DateField({
 
       {open ? (
         <DateTimePicker
-          value={value ? parseIsoDate(value) : new Date()}
+          value={parseIsoDate(value ?? getIstanbulToday())}
           mode="date"
           presentation="dialog"
           positiveButton={{ label: 'Tamam' }}

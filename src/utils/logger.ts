@@ -1,5 +1,6 @@
 // Lightweight console logging for following app activity in the terminal
 // (Metro / `expo run:android` output).
+import { formatDateTime } from './dates';
 
 type MutationPhase = 'start' | 'success' | 'error';
 
@@ -14,7 +15,7 @@ export function logMutation(
   phase: MutationPhase,
   data?: unknown,
 ): void {
-  const header = `[mutation:${name}] ${MUTATION_PHASE_LABEL[phase]} ${new Date().toISOString()}`;
+  const header = `[mutation:${name}] ${MUTATION_PHASE_LABEL[phase]} ${formatDateTime(new Date().toISOString())} UTC+3`;
   if (phase === 'error') console.error(header, data);
   else console.log(header, data);
 }
@@ -34,7 +35,7 @@ export function logQuery(
   phase: QueryPhase,
   data?: unknown,
 ): void {
-  const header = `[query:${name}] ${QUERY_PHASE_LABEL[phase]} ${new Date().toISOString()}`;
+  const header = `[query:${name}] ${QUERY_PHASE_LABEL[phase]} ${formatDateTime(new Date().toISOString())} UTC+3`;
   if (phase === 'error') console.error(header, data);
   else console.log(header, data);
 }

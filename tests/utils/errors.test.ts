@@ -3,6 +3,13 @@ import { describe, it, expect } from 'vitest';
 import { getUserMessage } from '@/utils/errors';
 
 describe('getUserMessage', () => {
+  it.each([
+    ['Staff cannot create future deliveries', 'Gelecek tarihli teslimat oluşturamazsınız. Bugün veya geçmiş bir tarih seçin.'],
+    ['No price found for product on date 2026-01-01', 'Seçilen tarihte ürün fiyatı bulunamadı. Lütfen yöneticinizle iletişime geçin.'],
+    ["Staff can only edit today's deliveries", 'Yalnızca bugünkü teslimatlarınızı düzenleyebilirsiniz. Geçmiş kayıtlar için yöneticinizle iletişime geçin.'],
+  ])('explains delivery failures: %s', (message, expected) => {
+    expect(getUserMessage({ message })).toBe(expected);
+  });
   it('maps invalid credentials to auth message', () => {
     expect(getUserMessage({ message: 'Invalid login credentials' })).toBe(
       'E-posta veya şifre hatalı.',

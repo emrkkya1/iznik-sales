@@ -6,6 +6,7 @@ import {
   esc,
   type ReportDocument,
 } from '@/utils/pdf/document';
+import { PDF_STYLESHEET } from '@/utils/pdf/styles';
 
 function doc(): ReportDocument {
   return {
@@ -47,6 +48,19 @@ describe('assembleReportDocument', () => {
     const html = assembleReportDocument(doc());
     expect(html).toContain('@page');
     expect(html).toContain('#E5DCCD');
+  });
+
+  it('reserves a bottom footer in the shared page layout, even for empty pages', () => {
+    const html = assembleReportDocument({ ...doc(), pages: [{ title: 'Boş Rapor', contextLine: '', bodyHtml: '' }] });
+    expect(html).toContain('<div class="pdf-page-body"></div>');
+    expect(html).toContain('sayfa 1 / 1');
+    const footer = PDF_STYLESHEET.match(/\.page-footer\s*\{([^}]+)\}/)?.[1];
+    expect(footer).toContain('flex: 0 0 auto');
+    expect(footer).toContain('margin-top: auto');
+    expect(footer).not.toContain('position:');
+    expect(PDF_STYLESHEET).toContain('width: 210mm');
+    expect(PDF_STYLESHEET).toContain('height: 297mm');
+    expect(PDF_STYLESHEET).toContain('@page { size: A4 portrait; margin: 0; }');
   });
 });
 

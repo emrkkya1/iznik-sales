@@ -7,6 +7,12 @@ import {
 } from '@/utils/pdf/svgCharts';
 
 describe('buildSvgLineChart', () => {
+  it('uses a viewBox so charts scale without cropping on portrait pages', () => {
+    for (const points of [[], [{ label: 'Ekmek', value: 10 }]]) {
+      expect(buildSvgLineChart(points, { geom: { width: 680, height: 140 } })).toContain('viewBox="0 0 680 140"');
+      expect(buildSvgBarChart(points, { geom: { width: 680, height: 180 } })).toContain('viewBox="0 0 680 180"');
+    }
+  });
   it('returns an empty svg for empty points', () => {
     const svg = buildSvgLineChart([]);
     expect(svg).toMatch(/<svg[^>]*\/>/);

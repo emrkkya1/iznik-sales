@@ -65,6 +65,17 @@ function snapshot(count: number, overrides: Partial<BranchReportSnapshot> = {}):
 }
 
 describe('buildBranchesDocument', () => {
+  it('keeps every branch and its location while fitting the portrait table into seven columns', () => {
+    const snap = snapshot(61);
+    const doc = buildBranchesDocument(snap);
+    const html = assembleReportDocument(doc);
+    expect(doc.pages).toHaveLength(4);
+    expect(html).toContain('class="branch-list-table"');
+    expect(html).toContain('class="cell-context">İznik / Merkez');
+    for (let i = 1; i <= 61; i++) expect(html.match(new RegExp(`>Şube ${i}(?: |<)`, 'g'))).toHaveLength(1);
+    expect(html.match(/Toplam \(61 şube\)/g)).toHaveLength(1);
+    expect(doc.pages[3]!.bodyHtml).toContain('>61</td>');
+  });
   it('produces a single page when the set fits on the cover', () => {
     const doc = buildBranchesDocument(snapshot(5));
     expect(doc.pages).toHaveLength(1);
@@ -72,7 +83,7 @@ describe('buildBranchesDocument', () => {
 
   it('paginates larger sets with continuation pages', () => {
     const doc = buildBranchesDocument(snapshot(40));
-    // 10 cover + ceil(30 / 24) = 2 continuation pages.
+    // 10 cover + ceil(30 / 20) = 2 continuation pages.
     expect(doc.pages).toHaveLength(3);
     expect(doc.pages[1]!.title).toContain('devam');
   });

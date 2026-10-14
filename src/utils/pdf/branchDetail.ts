@@ -4,7 +4,7 @@
  * Consumes a validated `BranchHubReport` and returns a `ReportDocument`:
  *
  *   Page 1 — identity strip + period KPIs + balance breakdown + sales trend.
- *   Page 2 — per-product performance table (plus a top-5 bar chart when the
+ *   Product pages — paginated performance table (plus a top-5 bar chart when the
  *            product list is short, so the page never looks empty).
  *   Pages 3..N — movement ledger (26 rows/page), totals + truncation note on
  *            the final page.
@@ -27,6 +27,7 @@ import { PDF_CHART_PALETTE } from './styles';
 import { buildSvgBarChart, buildSvgLineChart, type LinePoint } from './svgCharts';
 
 const LEDGER_ROWS = 26;
+const PRODUCT_ROWS = 20;
 const PRODUCT_CHART_THRESHOLD = 12;
 
 function periodLabel(period: BranchHubReport['period']): string {
@@ -120,7 +121,7 @@ function buildTrend(snap: BranchHubReport): string {
         ${line.length === 0
           ? emptyState('Bu dönemde satış verisi yok')
           : buildSvgLineChart(line, {
-              geom: { width: 760, height: 96, paddingLeft: 34, paddingRight: 8, paddingTop: 8, paddingBottom: 22 },
+              geom: { width: 680, height: 160, paddingLeft: 34, paddingRight: 16, paddingTop: 8, paddingBottom: 22 },
               lineColor: PDF_CHART_PALETTE[0],
               showValues: false,
             })}
@@ -129,13 +130,16 @@ function buildTrend(snap: BranchHubReport): string {
 }
 
 // ─── Page 2 ────────────────────────────────────────────────────────────────
-function buildProducts(snap: BranchHubReport): string {
-  const rows = snap.products;
+function buildProducts(snap: BranchHubReport, rows: BranchHubReport['products'], startIndex: number): string {
   if (rows.length === 0) return emptyState('Bu dönemde ürün hareketi yok');
 
   const table = `
     <div class="chart-wrap">
-      <table>
+      <table class="product-table">
+        <colgroup>
+          <col style="width:4%"><col style="width:24%"><col style="width:10%"><col style="width:10%">
+          <col style="width:10%"><col style="width:16%"><col style="width:16%"><col style="width:10%">
+        </colgroup>
         <thead>
           <tr>
             <th style="width:16px">#</th>
@@ -152,7 +156,7 @@ function buildProducts(snap: BranchHubReport): string {
           ${rows
             .map((row, i) => `
               <tr>
-                <td class="muted">${i + 1}</td>
+                <td class="muted">${startIndex + i + 1}</td>
                 <td>${esc(row.productName)}</td>
                 <td class="num">${esc(formatQtyPdf(row.deliveredQty))}</td>
                 <td class="num">${esc(formatQtyPdf(row.returnedQty))}</td>
@@ -166,21 +170,21 @@ function buildProducts(snap: BranchHubReport): string {
       </table>
     </div>`;
 
-  // When the product list is short, add a top-5 sales bar chart beside the
+  // When the product list is short, add a top-5 sales bar chart below the
   // table so the page stays filled and readable.
-  if (rows.length < PRODUCT_CHART_THRESHOLD) {
+  if (snap.products.length < PRODUCT_CHART_THRESHOLD) {
     const bars = [...rows].sort((a, b) => b.sales - a.sales).slice(0, 5).map((r) => ({
       label: r.productName,
       value: r.sales,
     }));
     return `
       <div class="section">
-        <div class="row gap-8">
+        <div class="stack">
           <div class="grow">${table}</div>
-          <div class="chart-wrap" style="width:260px;">
+          <div class="chart-wrap">
             <div class="chart-title">Satış (En Yüksek 5)</div>
             ${buildSvgBarChart(bars, {
-              geom: { width: 240, height: 160, paddingLeft: 34, paddingRight: 8, paddingTop: 8, paddingBottom: 22 },
+              geom: { width: 680, height: 180, paddingLeft: 34, paddingRight: 16, paddingTop: 8, paddingBottom: 32 },
               barColor: PDF_CHART_PALETTE[1] ?? PDF_CHART_PALETTE[0],
             })}
           </div>
@@ -262,12 +266,16 @@ export function buildBranchDetailDocument(snap: BranchHubReport): ReportDocument
       contextLine: context,
       bodyHtml: `${buildIdentity(snap)}${buildPeriodKpis(snap)}${buildBalanceBreakdown(snap)}${buildTrend(snap)}`,
     },
-    {
-      title: 'Ürün Performansı',
-      contextLine: `${snap.identity.name} · ${context}`,
-      bodyHtml: buildProducts(snap),
-    },
   ];
+
+  const productChunks = snap.products.length > 0 ? chunkRows(snap.products, PRODUCT_ROWS) : [[]];
+  productChunks.forEach((rows, index) => {
+    pages.push({
+      title: `Ürün Performansı${index > 0 ? ' — devam' : ''}`,
+      contextLine: `${snap.identity.name} · ${context}`,
+      bodyHtml: buildProducts(snap, rows, index * PRODUCT_ROWS),
+    });
+  });
 
   const ledger = snap.movements;
   const ledgerChunks = chunkRows(ledger, LEDGER_ROWS);

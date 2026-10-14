@@ -110,7 +110,7 @@ export function buildSvgLineChart(
   const showValues = options.showValues ?? false;
 
   if (points.length === 0) {
-    return `<svg width="${geom.width}" height="${geom.height}" xmlns="http://www.w3.org/2000/svg" />`;
+    return `<svg width="${geom.width}" height="${geom.height}" viewBox="0 0 ${geom.width} ${geom.height}" xmlns="http://www.w3.org/2000/svg" />`;
   }
 
   const innerW = geom.width - geom.paddingLeft - geom.paddingRight;
@@ -158,7 +158,7 @@ export function buildSvgLineChart(
     : '';
 
   return [
-    `<svg width="${geom.width}" height="${geom.height}" xmlns="http://www.w3.org/2000/svg">`,
+    `<svg width="${geom.width}" height="${geom.height}" viewBox="0 0 ${geom.width} ${geom.height}" xmlns="http://www.w3.org/2000/svg">`,
     buildYAxis(geom, effectiveMin, effectiveMax, labelColor, axisColor),
     `<path d="${path}" fill="none" stroke="${lineColor}" stroke-width="1.5" />`,
     dots,
@@ -188,7 +188,7 @@ export function buildSvgBarChart(
   const showValues = options.showValues ?? false;
 
   if (points.length === 0) {
-    return `<svg width="${geom.width}" height="${geom.height}" xmlns="http://www.w3.org/2000/svg" />`;
+    return `<svg width="${geom.width}" height="${geom.height}" viewBox="0 0 ${geom.width} ${geom.height}" xmlns="http://www.w3.org/2000/svg" />`;
   }
 
   const innerW = geom.width - geom.paddingLeft - geom.paddingRight;
@@ -228,7 +228,7 @@ export function buildSvgBarChart(
     .join('');
 
   return [
-    `<svg width="${geom.width}" height="${geom.height}" xmlns="http://www.w3.org/2000/svg">`,
+    `<svg width="${geom.width}" height="${geom.height}" viewBox="0 0 ${geom.width} ${geom.height}" xmlns="http://www.w3.org/2000/svg">`,
     buildYAxis(geom, 0, effectiveMax, labelColor, axisColor),
     bars,
     valueLabels,

@@ -3,10 +3,19 @@ import { describe, it, expect } from 'vitest';
 import {
   formatBalanceAmount,
   formatCurrency,
+  formatDate,
   getBalanceColorClass,
   getBalanceLabel,
   getBranchBalanceDirection,
 } from '@/utils/formatters';
+
+describe('formatDate', () => {
+  it('uses the Istanbul day for timestamps and preserves date-only values', () => {
+    expect(formatDate('2026-12-31T21:15:00Z')).toBe('01.01.2027');
+    expect(formatDate(new Date('2026-12-31T21:15:00Z'))).toBe('01.01.2027');
+    expect(formatDate('2026-12-31')).toBe('31.12.2026');
+  });
+});
 
 describe('formatBalanceAmount', () => {
   it('renders the positive amount as currency without a sign', () => {
