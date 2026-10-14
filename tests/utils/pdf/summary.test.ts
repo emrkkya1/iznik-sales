@@ -49,6 +49,12 @@ function snapshotFixture(): SummaryPdfSnapshot {
 }
 
 describe('buildSummaryDocument', () => {
+  it('stacks full-width charts and attention/product tables on portrait A4 pages', () => {
+    const doc = buildSummaryDocument(snapshotFixture());
+    expect(doc.pages[0]!.bodyHtml.match(/class="stack"/g)).toHaveLength(2);
+    expect(doc.pages[1]!.bodyHtml.match(/class="stack"/g)).toHaveLength(1);
+    expect(doc.pages[0]!.bodyHtml).toContain('viewBox="0 0 680 140"');
+  });
   it('labels a daily report with its single calendar date', () => {
     const snap = snapshotFixture();
     snap.range = 'day';

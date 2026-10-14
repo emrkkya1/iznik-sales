@@ -2,7 +2,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, ButtonIcon } from '@/components/ui/button';
 import { PlusIcon } from '@/components/ui/icon';
-import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 
 type FloatingCreateButtonProps = {
@@ -35,15 +34,9 @@ export function FloatingCreateButton({ label, onPress }: FloatingCreateButtonPro
       }}
     >
       <ButtonIcon as={PlusIcon} />
-      <Pressable
-        accessibilityElementsHidden
-        importantForAccessibility="no"
-        style={{ marginLeft: 8 }}
-      >
-        <Text size="sm" bold className="text-primary-foreground">
-          {label}
-        </Text>
-      </Pressable>
+      <Text size="sm" bold className="ml-2 text-primary-foreground">
+        {label}
+      </Text>
     </Button>
   );
 }

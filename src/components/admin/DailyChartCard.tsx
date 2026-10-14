@@ -13,7 +13,7 @@ import {
   CHART_LABEL_COLOR,
   CHART_PRIMARY_COLOR,
 } from '@/utils/chartPalette';
-import { parseIsoDate } from '@/utils/dates';
+import { formatDateBucketLabel as formatBucketLabel } from '@/utils/dates';
 import { formatCurrency } from '@/utils/formatters';
 
 type DailyChartCardProps = {
@@ -27,40 +27,6 @@ type DailyChartCardProps = {
   axisColor?: string;
   labelColor?: string;
 };
-
-// Formats a YYYY-MM-DD bucket into a short axis label per granularity.
-function formatBucketLabel(
-  bucket: string,
-  granularity: 'day' | 'week' | 'month',
-): string {
-  const d = parseIsoDate(bucket);
-  if (granularity === 'day') {
-    return new Intl.DateTimeFormat('tr-TR', {
-      day: '2-digit',
-      month: 'short',
-    }).format(d);
-  }
-  if (granularity === 'month') {
-    return new Intl.DateTimeFormat('tr-TR', {
-      month: 'short',
-      year: '2-digit',
-    }).format(d);
-  }
-  // week → ISO week number
-  const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const dayNum = (tmp.getUTCDay() + 6) % 7;
-  tmp.setUTCDate(tmp.getUTCDate() - dayNum + 3);
-  const firstThursday = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 4));
-  const week =
-    1 +
-    Math.round(
-      ((tmp.getTime() - firstThursday.getTime()) / 86400000 -
-        3 +
-        ((firstThursday.getUTCDay() + 6) % 7)) /
-        7,
-    );
-  return `H${week}`;
-}
 
 export function DailyChartCard({
   series,

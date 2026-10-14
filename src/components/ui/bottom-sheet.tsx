@@ -121,7 +121,6 @@ export function BottomSheet({
                 style={{ flexGrow: 0, flexShrink: 1, minHeight: 0, maxHeight: bodyMaxHeight }}
                 contentContainerStyle={{
                   padding: contentPadding,
-                  maxHeight: bodyMaxHeight,
                   gap: 12,
                 }}
                 keyboardShouldPersistTaps="handled"

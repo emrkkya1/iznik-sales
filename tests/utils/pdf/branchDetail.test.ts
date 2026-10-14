@@ -45,6 +45,28 @@ function snapshot(overrides: Partial<BranchHubReport> = {}): BranchHubReport {
 }
 
 describe('buildBranchDetailDocument', () => {
+  it('paginates all product rows on portrait pages without dropping or renumbering them', () => {
+    const products = Array.from({ length: 50 }, (_, i) => ({
+      productId: UUID, productName: `Ürün-${i + 1}`, deliveredQty: 10,
+      returnedQty: 1, netQty: 9, sales: 90, returnedValue: 10, returnRate: 10,
+    }));
+    const doc = buildBranchDetailDocument(snapshot({ products }));
+    // Identity + 3 product pages + the intentional empty ledger page.
+    expect(doc.pages).toHaveLength(5);
+    expect(doc.pages[2]!.title).toContain('devam');
+    expect(doc.pages[2]!.bodyHtml).toContain('>21</td>');
+    expect(doc.pages[3]!.bodyHtml).toContain('>50</td>');
+    const html = assembleReportDocument(doc);
+    for (let i = 1; i <= 50; i++) expect(html.match(new RegExp(`>Ürün-${i}</td>`, 'g'))).toHaveLength(1);
+    expect(html).toContain('sayfa 5 / 5');
+  });
+
+  it('places a short-list sales chart below, not beside, the product table', () => {
+    const doc = buildBranchDetailDocument(snapshot({ products: [{ productId: UUID, productName: 'Ekmek', deliveredQty: 10, returnedQty: 0, netQty: 10, sales: 100, returnedValue: 0, returnRate: 0 }] }));
+    expect(doc.pages[1]!.bodyHtml).toContain('class="stack"');
+    expect(doc.pages[1]!.bodyHtml).toContain('Satış (En Yüksek 5)');
+    expect(doc.pages[1]!.bodyHtml).not.toContain('width:260px');
+  });
   it('always produces at least two pages (identity + products)', () => {
     const doc = buildBranchDetailDocument(snapshot());
     expect(doc.pages.length).toBeGreaterThanOrEqual(2);

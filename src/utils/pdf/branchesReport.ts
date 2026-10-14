@@ -4,7 +4,7 @@
  * Consumes a validated `BranchReportSnapshot` and returns a `ReportDocument`:
  *
  *   Page 1 — cover: filter echo + KPI strip + first rows of the branch table.
- *   Pages 2..N — 24-row continuation pages with a totals row on the last one.
+ *   Pages 2..N — 20-row continuation pages with a totals row on the last one.
  *
  * The report honors the exact on-screen filters (the RPC reuses M23's
  * predicates + ordering), so the PDF can never disagree with the table.
@@ -24,7 +24,7 @@ import {
 } from './formatters';
 
 const COVER_ROWS = 10;
-const PAGE_ROWS = 24;
+const PAGE_ROWS = 20;
 
 // Local mirror of the day-of-week labels (Mon-first display order, matching
 // DayOfWeekPicker). Kept local so this pure builder has no react-native import.
@@ -123,8 +123,7 @@ function renderTable(
     .map((row, i) => `
       <tr>
         <td class="muted">${opts.startIndex + i + 1}</td>
-        <td>${esc(row.name)}${row.isActive ? '' : ' <span class="muted">(pasif)</span>'}</td>
-        <td class="muted">${esc(row.cityName)} / ${esc(row.districtName)}</td>
+        <td>${esc(row.name)}${row.isActive ? '' : ' <span class="muted">(pasif)</span>'}<span class="cell-context">${esc(row.cityName)} / ${esc(row.districtName)}</span></td>
         <td class="num">${esc(formatCurrencyPdf(row.salesTotal))}</td>
         <td class="num">${esc(formatCurrencyPdf(row.collectionTotal))}</td>
         <td class="num">${esc(formatBalanceAmountPdf(row.currentBalance))} ${balanceChip(row.currentBalance)}</td>
@@ -135,7 +134,7 @@ function renderTable(
 
   const totals = opts.withTotals
     ? `<tfoot><tr>
-        <td></td><td class="strong">Toplam (${snap.summary.branchCount} şube)</td><td></td>
+        <td></td><td class="strong">Toplam (${snap.summary.branchCount} şube)</td>
         <td class="num">${esc(formatCurrencyPdf(snap.summary.totalSales))}</td>
         <td class="num">${esc(formatCurrencyPdf(snap.summary.totalCollection))}</td>
         <td class="num">${esc(formatBalanceAmountPdf(snap.summary.balanceSum))}</td>
@@ -146,12 +145,15 @@ function renderTable(
 
   return `
     <div class="chart-wrap">
-      <table>
+      <table class="branch-list-table">
+        <colgroup>
+          <col style="width:4%"><col style="width:25%"><col style="width:14%">
+          <col style="width:14%"><col style="width:19%"><col style="width:8%"><col style="width:16%">
+        </colgroup>
         <thead>
           <tr>
             <th style="width:16px">#</th>
-            <th>Şube</th>
-            <th>Şehir / İlçe</th>
+            <th>Şube / Şehir / İlçe</th>
             <th class="num">Satış ₺</th>
             <th class="num">Tahsilat ₺</th>
             <th class="num">Bakiye</th>

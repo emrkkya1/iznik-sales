@@ -27,6 +27,7 @@ import { useCreateDelivery, useUpdateDelivery } from '@/hooks/useMutations';
 import { useReceiptDraftStore } from '@/store/receiptDraft';
 import type { ReceiptSummary } from '@/types';
 import { formatDateForDisplay } from '@/utils/dates';
+import { getUserMessage } from '@/utils/errors';
 import { computeReceiptPreview } from '@/utils/receiptPreview';
 
 const COLUMN_GAP = 12;
@@ -295,7 +296,7 @@ export function StaffHomeScreen() {
 
                 {createDelivery.isError || updateDelivery.isError ? (
                   <Text size="sm" className="text-destructive">
-                    Kayıt sırasında bir sorun oluştu. Tekrar deneyin.
+                    {getUserMessage(isEditing ? updateDelivery.error : createDelivery.error)}
                   </Text>
                 ) : null}
               </VStack>

@@ -14,6 +14,8 @@
  *   * Empty / null handling returns "—" or "Veri yok" depending on call site.
  */
 
+import { formatDateBucketLabel, ISTANBUL_TIME_ZONE, parseDisplayDate } from '../dates';
+
 const currency = new Intl.NumberFormat('tr-TR', {
   style: 'currency',
   currency: 'TRY',
@@ -24,12 +26,14 @@ const quantity = new Intl.NumberFormat('tr-TR', {
 });
 
 const longDate = new Intl.DateTimeFormat('tr-TR', {
+  timeZone: ISTANBUL_TIME_ZONE,
   day: '2-digit',
   month: 'long',
   year: 'numeric',
 });
 
 const shortDate = new Intl.DateTimeFormat('tr-TR', {
+  timeZone: ISTANBUL_TIME_ZONE,
   day: '2-digit',
   month: '2-digit',
   year: 'numeric',
@@ -84,50 +88,22 @@ export function formatPercentPdf(
 
 export function formatLongDatePdf(value: string | Date | null | undefined): string {
   if (!value) return '—';
-  const d = value instanceof Date ? value : new Date(value);
+  const d = parseDisplayDate(value);
   if (Number.isNaN(d.getTime())) return '—';
   return longDate.format(d);
 }
 
 export function formatShortDatePdf(value: string | Date | null | undefined): string {
   if (!value) return '—';
-  const d = value instanceof Date ? value : new Date(value);
+  const d = parseDisplayDate(value);
   if (Number.isNaN(d.getTime())) return '—';
   return shortDate.format(d);
 }
 
-// Same bucket-label logic as DailyChartCard.tsx:32-63 so PDF x-axis labels
-// match the on-screen chart byte-for-byte.
+// Share Istanbul calendar labels with the on-screen charts.
 export function formatBucketLabelPdf(
   bucket: string,
   granularity: 'day' | 'week' | 'month',
 ): string {
-  const d = new Date(bucket);
-  if (Number.isNaN(d.getTime())) return bucket;
-  if (granularity === 'day') {
-    return new Intl.DateTimeFormat('tr-TR', {
-      day: '2-digit',
-      month: 'short',
-    }).format(d);
-  }
-  if (granularity === 'month') {
-    return new Intl.DateTimeFormat('tr-TR', {
-      month: 'short',
-      year: '2-digit',
-    }).format(d);
-  }
-  // week → ISO week number
-  const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const dayNum = (tmp.getUTCDay() + 6) % 7;
-  tmp.setUTCDate(tmp.getUTCDate() - dayNum + 3);
-  const firstThursday = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 4));
-  const week =
-    1 +
-    Math.round(
-      ((tmp.getTime() - firstThursday.getTime()) / 86400000 -
-        3 +
-        ((firstThursday.getUTCDay() + 6) % 7)) /
-        7,
-    );
-  return `H${week}`;
+  return formatDateBucketLabel(bucket, granularity);
 }

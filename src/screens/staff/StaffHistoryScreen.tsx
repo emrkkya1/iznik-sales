@@ -17,14 +17,7 @@ import { VStack } from '@/components/ui/vstack';
 import { useMyDeliveries } from '@/hooks';
 import { useReceiptDraftStore } from '@/store/receiptDraft';
 import type { DeliveryWithBranch, MovementRow } from '@/types';
-import { canEditDelivery } from '@/utils/dates';
-
-function formatTime(iso: string): string {
-  return new Intl.DateTimeFormat('tr-TR', {
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(iso));
-}
+import { canEditDelivery, formatTime } from '@/utils/dates';
 
 // Adapt a staff DeliveryWithBranch row into the MovementRow shape the
 // shared MovementDetailSheet consumes. The list query doesn't include the

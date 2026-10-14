@@ -32,6 +32,16 @@ export function getUserMessage(error: unknown): string {
 
     const message = (err.message ?? '').toLowerCase();
 
+    if (/staff cannot create future deliveries/.test(message)) {
+      return 'Gelecek tarihli teslimat oluşturamazsınız. Bugün veya geçmiş bir tarih seçin.';
+    }
+    if (/no price found for product on date/.test(message)) {
+      return 'Seçilen tarihte ürün fiyatı bulunamadı. Lütfen yöneticinizle iletişime geçin.';
+    }
+    if (/staff can only edit today's deliveries/.test(message)) {
+      return 'Yalnızca bugünkü teslimatlarınızı düzenleyebilirsiniz. Geçmiş kayıtlar için yöneticinizle iletişime geçin.';
+    }
+
     if (/invalid login credentials/.test(message)) {
       return errorMessages.auth;
     }

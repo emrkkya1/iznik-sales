@@ -12,6 +12,14 @@ import {
 } from '@/utils/pdf/formatters';
 
 describe('pdf formatters', () => {
+  it('uses Istanbul date rollover for report timestamps, without shifting business dates', () => {
+    expect(formatShortDatePdf('2026-12-31T21:15:00Z')).toBe('01.01.2027');
+    expect(formatLongDatePdf('2026-12-31T21:15:00Z')).toBe('01 Ocak 2027');
+    expect(formatShortDatePdf('2026-12-31')).toBe('31.12.2026');
+    expect(formatLongDatePdf('invalid')).toBe('—');
+    expect(formatShortDatePdf('invalid')).toBe('—');
+    expect(formatBucketLabelPdf('2027-01-03T21:30:00Z', 'week')).toBe('H1');
+  });
   it('formatCurrencyPdf returns Turkish TRY with ₺ symbol', () => {
     // 1234.5 → ₺1.234,50
     expect(formatCurrencyPdf(1234.5)).toContain('1.234');
