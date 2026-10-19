@@ -45,6 +45,7 @@ export type {
   CreateCityInput,
   CreateDistrictInput,
   CreateBranchInput,
+  UpdateOpeningBalanceInput,
   PaymentEmbed,
   DeliveryWithPayment,
   ManualPayment,

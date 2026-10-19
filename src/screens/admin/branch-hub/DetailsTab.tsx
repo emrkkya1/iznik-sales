@@ -126,11 +126,7 @@ export function DetailsTab({ branchId }: DetailsTabProps) {
         <Row
           label="Açılış Bakiyesi"
           value={formatBalanceCell(d.openingBalance)}
-          hint={
-            typeof d.branchCreatedAt === 'string' && d.branchCreatedAt
-              ? `${formatDateForDisplay(d.branchCreatedAt)}'ten beri`
-              : undefined
-          }
+          hint="Şubenin başlangıç bakiyesi; sonradan yapılan açılış düzeltmelerini içerir."
         />
         <Row
           label="Açılış Tarihi"

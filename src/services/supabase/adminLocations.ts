@@ -125,6 +125,27 @@ export const supabaseAdminLocationRepository: AdminLocationRepository = {
     if (error) throw error;
   },
 
+  async updateOpeningBalance(input) {
+    const { error } = await supabaseClient.rpc('update_branch_opening_balance', {
+      p_branch_id: input.branchId,
+      p_opening_balance: input.openingBalance,
+      p_expected_opening_balance: input.expectedOpeningBalance,
+    });
+    if (error?.message === 'Opening balances are locked') {
+      throw new Error('Açılış bakiyeleri kilitli. Değişiklik yapılamaz.');
+    }
+    if (error?.message === 'Opening balance changed. Reopen and try again.') {
+      throw new Error('Açılış bakiyesi başka bir işlemle değişti. Pencereyi kapatıp yeniden açın.');
+    }
+    if (error?.message === 'Invalid opening balance') {
+      throw new Error('Geçerli, en fazla iki ondalık basamaklı bir tutar girin.');
+    }
+    if (error?.message === 'Branch not found') {
+      throw new Error('Şube bulunamadı. Listeyi yenileyin.');
+    }
+    if (error) throw error;
+  },
+
   async getOpeningBalancesLocked() {
     const { data, error } = await supabaseClient.rpc(
       'get_opening_balances_locked',

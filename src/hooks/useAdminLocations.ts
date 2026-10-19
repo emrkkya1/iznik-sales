@@ -12,6 +12,7 @@ import type {
   CreateBranchInput,
   CreateCityInput,
   CreateDistrictInput,
+  UpdateOpeningBalanceInput,
 } from '@/types';
 import { instrumentQuery, logMutation, summarizeResult } from '@/utils/logger';
 
@@ -303,5 +304,32 @@ export function useRenameBranch() {
       ]);
     },
     onError: (error) => logMutation('rename_branch', 'error', error),
+  });
+}
+
+export function useUpdateOpeningBalance() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    retry: false,
+    mutationFn: (input: UpdateOpeningBalanceInput) => services.adminLocations.updateOpeningBalance(input),
+    onMutate: (input) => logMutation('update_branch_opening_balance', 'start', input),
+    onSuccess: async (_data, input) => {
+      logMutation('update_branch_opening_balance', 'success', input);
+      await Promise.all([
+        ['admin', 'branches'], ['admin', 'branch-hub', 'details', input.branchId],
+        ['balance', input.branchId], BRANCH_ANALYTICS_QUERY_KEY, ['reports'],
+        ['branches'], ['branch-location', input.branchId],
+      ].map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+    },
+    onError: async (error, input) => {
+      logMutation('update_branch_opening_balance', 'error', error);
+      // Refresh even after an ambiguous failure: the write may have committed,
+      // or another admin may have corrected the opening balance first.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin', 'branch-hub', 'details', input.branchId] }),
+        queryClient.invalidateQueries({ queryKey: ['balance', input.branchId] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'app-config'] }),
+      ]);
+    },
   });
 }
