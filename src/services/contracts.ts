@@ -38,6 +38,7 @@ import type {
   SendReportEmailInput,
   SendReportEmailResult,
   UpdateDeliveryInput,
+  UpdateOpeningBalanceInput,
   User,
 } from '@/types';
 import type { SummaryPdfSnapshot } from './supabase/summaryPdfSchema';
@@ -118,6 +119,7 @@ export interface AdminLocationRepository {
   setDistrictActive(id: string, isActive: boolean): Promise<void>;
   setBranchActive(id: string, isActive: boolean): Promise<void>;
   renameBranch(id: string, name: string): Promise<void>;
+  updateOpeningBalance(input: UpdateOpeningBalanceInput): Promise<void>;
   setOpeningBalancesLocked(locked: boolean): Promise<void>;
   getOpeningBalancesLocked(): Promise<boolean>;
   getBranchHubDetails(branchId: string): Promise<BranchHubDetails>;

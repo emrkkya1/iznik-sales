@@ -772,6 +772,14 @@ export type Database = {
         Args: { p_date: string; p_delivery_id: string; p_items: Json }
         Returns: undefined
       }
+      update_branch_opening_balance: {
+        Args: {
+          p_branch_id: string
+          p_opening_balance: number
+          p_expected_opening_balance: number
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       report_schedule_mode: 'weekly' | 'monthly' | 'disabled'

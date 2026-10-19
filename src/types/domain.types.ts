@@ -285,10 +285,8 @@ export interface BranchWithContext extends Branch {
 }
 
 // Branch Hub summary card details (returned by get_branch_hub_details)
-// Note: `branchCreatedAt` is `branches.created_at`. Today it is also the date
-// the opening balance took effect (create_branch sets opening_balance only at
-// row creation). If opening_balance ever becomes editable post-creation, this
-// field's name will no longer reflect its semantic; rename then.
+// `branchCreatedAt` is the branch creation date, not the last opening-balance
+// correction date. Opening balance edits restate the starting amount.
 export interface BranchHubDetails {
   name: string;
   districtName: string;
@@ -324,6 +322,12 @@ export interface CreateBranchInput {
   openingBalance: number;
   isActive: boolean;
   products: BranchProductSelection[];
+}
+
+export interface UpdateOpeningBalanceInput {
+  branchId: string;
+  openingBalance: number;
+  expectedOpeningBalance: number;
 }
 
 // Branch movement entry (from list_deliveries_with_payments RPC)

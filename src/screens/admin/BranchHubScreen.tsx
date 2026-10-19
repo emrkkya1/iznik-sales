@@ -5,6 +5,7 @@ import { ScrollView, View } from 'react-native';
 import { ActionMenu, type ActionMenuItem } from '@/components/admin/ActionMenu';
 import { RenameBranchSheet } from '@/components/admin/RenameBranchSheet';
 import { ManualPaymentSheet } from '@/components/admin/ManualPaymentSheet';
+import { OpeningBalanceSheet } from '@/components/admin/OpeningBalanceSheet';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonIcon, ButtonText } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/error-state';
@@ -47,6 +48,7 @@ export function BranchHubScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>('products');
   const [renameOpen, setRenameOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [openingBalanceOpen, setOpeningBalanceOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<{ top: number; height: number } | null>(null);
   const menuRef = useRef<View>(null);
 
@@ -77,6 +79,10 @@ export function BranchHubScreen() {
         {
           label: 'Şube Adını Düzenle',
           onPress: () => setRenameOpen(true),
+        },
+        {
+          label: 'Açılış Bakiyesini Düzenle',
+          onPress: () => setOpeningBalanceOpen(true),
         },
         {
           label: data.isActive ? 'Pasife Al' : 'Aktifleştir',
@@ -254,6 +260,14 @@ export function BranchHubScreen() {
           key={branchId}
           branchId={branchId}
           onClose={() => setPaymentOpen(false)}
+        />
+      ) : null}
+      {openingBalanceOpen && data ? (
+        <OpeningBalanceSheet
+          key={branchId}
+          branchId={branchId}
+          openingBalance={data.openingBalance}
+          onClose={() => setOpeningBalanceOpen(false)}
         />
       ) : null}
     </Box>
