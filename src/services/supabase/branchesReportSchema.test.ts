@@ -59,6 +59,17 @@ function valid(): any {
 }
 
 describe('branchesReportSnapshotSchema', () => {
+  it.each(['delivered_qty', 'returned_qty'])('accepts quantity sort %s', (sortBy) => {
+    const v = valid();
+    v.filters.sortBy = sortBy;
+    expect(parseBranchesReportSnapshot(v).filters.sortBy).toBe(sortBy);
+  });
+
+  it.each([null, undefined])('rejects null or missing quantity sort: %s', (sortBy) => {
+    const v = valid();
+    v.filters.sortBy = sortBy;
+    expect(() => parseBranchesReportSnapshot(v)).toThrow();
+  });
   it('accepts a complete valid payload', () => {
     expect(() => parseBranchesReportSnapshot(valid())).not.toThrow();
   });

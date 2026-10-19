@@ -12,7 +12,7 @@ const branchReportFiltersSchema = z.object({
   daysOfWeek: z.array(z.number().int().min(0).max(6)).nullable(),
   cityName: z.string().nullable(),
   districtName: z.string().nullable(),
-  sortBy: z.enum(['name', 'balance', 'return_rate', 'last_activity', 'location']),
+  sortBy: z.enum(['name', 'balance', 'delivered_qty', 'returned_qty', 'return_rate', 'last_activity', 'location']),
   sortDir: z.enum(['asc', 'desc']),
   productIds: z.array(z.string().uuid()).nullable(),
   productFilterApplied: z.boolean(),

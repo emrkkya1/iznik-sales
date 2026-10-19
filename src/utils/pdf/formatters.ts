@@ -7,7 +7,7 @@
  *
  * Rules:
  *   * Locale 'tr-TR' everywhere.
- *   * Currency in ₺ (TRY), no decimals stripping (Intl handles it).
+ *   * Currency in ₺ (TRY), two decimals by default; branch reports opt into whole lira.
  *   * Quantity uses the dot-thousands separator (1.234).
  *   * Percent renders as e.g. "%12,3" with one decimal — same as KpiCard.
  *   * Date renders as long Turkish (e.g. "12 Ağustos 2026").
@@ -25,6 +25,13 @@ const quantity = new Intl.NumberFormat('tr-TR', {
   maximumFractionDigits: 2,
 });
 
+const wholeCurrency = new Intl.NumberFormat('tr-TR', {
+  style: 'currency',
+  currency: 'TRY',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
 const longDate = new Intl.DateTimeFormat('tr-TR', {
   timeZone: ISTANBUL_TIME_ZONE,
   day: '2-digit',
@@ -39,21 +46,21 @@ const shortDate = new Intl.DateTimeFormat('tr-TR', {
   year: 'numeric',
 });
 
-export function formatCurrencyPdf(value: number | null | undefined): string {
+export function formatCurrencyPdf(value: number | null | undefined, fractionDigits: 0 | 2 = 2): string {
   if (value === null || value === undefined || !Number.isFinite(value)) {
     return '—';
   }
-  return currency.format(value);
+  return (fractionDigits === 0 ? wholeCurrency : currency).format(value);
 }
 
 // Per AGENTS.md "balance convention": never show a leading "-". Display the
 // absolute amount + the label (Alacak/Borç). The label is rendered separately
 // by callers so we don't bake the sign into the number.
-export function formatBalanceAmountPdf(value: number | null | undefined): string {
+export function formatBalanceAmountPdf(value: number | null | undefined, fractionDigits: 0 | 2 = 2): string {
   if (value === null || value === undefined || !Number.isFinite(value)) {
     return '—';
   }
-  return currency.format(Math.abs(value));
+  return formatCurrencyPdf(Math.abs(value), fractionDigits);
 }
 
 export function getBalanceLabelPdf(value: number): 'Alacak' | 'Borç' | null {

@@ -55,9 +55,11 @@ type Column = {
 };
 
 const COLUMNS: readonly Column[] = [
-  { key: 'name', label: 'Şube', flex: 1.6, sortable: true },
-  { key: 'location', label: 'Şehir/İlçe', flex: 1.7, sortable: true },
+  { key: 'name', label: 'Şube', flex: 2, sortable: true },
+  { key: 'location', label: 'Şehir/İlçe', flex: 1.3, sortable: true },
   { key: 'balance', label: 'Bakiye', flex: 1.1, align: 'right', sortable: true },
+  { key: 'delivered_qty', label: 'Verilen', flex: 0.8, align: 'right', sortable: true },
+  { key: 'returned_qty', label: 'Alınan', flex: 0.8, align: 'right', sortable: true },
   { key: 'return_rate', label: 'İade Oranı', flex: 1, align: 'right', sortable: true },
   { key: 'last_activity', label: 'Son İşlem', flex: 1.2, align: 'right', sortable: true },
 ];
@@ -263,7 +265,7 @@ export function BranchesTableScreen() {
                 </Box>
               </Pressable>
             </Box>
-            <Box style={{ flex: 1.6 }} className="items-start justify-center">
+            <Box style={{ flex: 2 }} className="items-start justify-center">
               <VStack space="xs">
                 <Text size="sm" bold numberOfLines={1} className="text-foreground">
                   {item.name}
@@ -275,7 +277,7 @@ export function BranchesTableScreen() {
                 ) : null}
               </VStack>
             </Box>
-            <Box style={{ flex: 1.7 }} className="items-start justify-center">
+            <Box style={{ flex: 1.3 }} className="items-start justify-center">
               <Text size="sm" numberOfLines={1} className="text-foreground">
                 {`${item.cityName} / ${item.districtName}`}
               </Text>
@@ -287,7 +289,7 @@ export function BranchesTableScreen() {
                   bold
                   className={getBalanceColorClass(item.currentBalance)}
                 >
-                  {formatBalanceAmount(item.currentBalance)}
+                  {formatBalanceAmount(item.currentBalance, 0)}
                 </Text>
                 {balanceLabel ? (
                   <Text size="xs" className="text-muted-foreground">
@@ -296,15 +298,20 @@ export function BranchesTableScreen() {
                 ) : null}
               </VStack>
             </Box>
+            <Box style={{ flex: 0.8 }} className="items-end justify-center">
+              <Text size="sm" className="text-foreground">
+                {formatCount(item.deliveredQty)}
+              </Text>
+            </Box>
+            <Box style={{ flex: 0.8 }} className="items-end justify-center">
+              <Text size="sm" className="text-foreground">
+                {formatCount(item.returnedQty)}
+              </Text>
+            </Box>
             <Box style={{ flex: 1 }} className="items-end justify-center">
-              <VStack space="xs" className="items-end">
-                <Text size="sm" bold className="text-foreground">
-                  {formatReturnRate(item.returnRate)}
-                </Text>
-                <Text size="xs" className="text-muted-foreground">
-                  {formatCount(item.returnedQty)}/{formatCount(item.deliveredQty)}
-                </Text>
-              </VStack>
+              <Text size="sm" bold className="text-foreground">
+                {formatReturnRate(item.returnRate)}
+              </Text>
             </Box>
             <Box style={{ flex: 1.2 }} className="items-end justify-center">
               <VStack space="xs" className="items-end">

@@ -227,6 +227,7 @@ export const PDF_STYLESHEET = `
   .branch-list-table, .product-table { table-layout: fixed; }
   .branch-list-table th, .branch-list-table td,
   .product-table th, .product-table td { overflow-wrap: anywhere; }
+  .branch-list-table th, .branch-list-table td { padding-left: 5px; padding-right: 5px; }
   .cell-context { display: block; margin-top: 2px; font-size: 9px; color: ${BRAND_COLORS.mutedForeground}; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; }
   th.num { text-align: right; }

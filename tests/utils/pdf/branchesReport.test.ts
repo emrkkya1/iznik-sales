@@ -65,7 +65,7 @@ function snapshot(count: number, overrides: Partial<BranchReportSnapshot> = {}):
 }
 
 describe('buildBranchesDocument', () => {
-  it('keeps every branch and its location while fitting the portrait table into seven columns', () => {
+  it('keeps every branch and its location in the nine-column portrait table', () => {
     const snap = snapshot(61);
     const doc = buildBranchesDocument(snap);
     const html = assembleReportDocument(doc);
@@ -75,6 +75,23 @@ describe('buildBranchesDocument', () => {
     for (let i = 1; i <= 61; i++) expect(html.match(new RegExp(`>Şube ${i}(?: |<)`, 'g'))).toHaveLength(1);
     expect(html.match(/Toplam \(61 şube\)/g)).toHaveLength(1);
     expect(doc.pages[3]!.bodyHtml).toContain('>61</td>');
+  });
+  it('renders quantity columns and totals in order, with compact balances and stacked direction labels', () => {
+    const snap = snapshot(2);
+    snap.rows[0] = { ...row(1), currentBalance: -1234.56, deliveredQty: 12345, returnedQty: 678 };
+    const html = buildBranchesDocument(snap).pages[0]!.bodyHtml;
+    expect(html).toMatch(/>Bakiye<\/th>\s*<th class="num">Verilen<\/th>\s*<th class="num">Alınan<\/th>\s*<th class="num">İade %/);
+    expect(html).toContain('₺1.235<span class="cell-context"><span class="chip chip-borc">Borç</span></span>');
+    expect(html).toContain('₺200<span class="cell-context"><span class="chip chip-alacak">Alacak</span></span>');
+    expect(html).toMatch(/>12\.345<\/td>\s*<td class="num">678<\/td>/);
+    expect(html).toMatch(/>100<\/td>\s*<td class="num">10<\/td>/);
+    expect(html).not.toContain(',00');
+  });
+
+  it.each([['delivered_qty', 'Verilen'], ['returned_qty', 'Alınan']] as const)('echoes %s sorting', (sortBy, label) => {
+    const snap = snapshot(1);
+    snap.filters.sortBy = sortBy;
+    expect(buildBranchesDocument(snap).pages[0]!.bodyHtml).toContain(`${label} (artan)`);
   });
   it('produces a single page when the set fits on the cover', () => {
     const doc = buildBranchesDocument(snapshot(5));

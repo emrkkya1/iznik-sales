@@ -12,6 +12,14 @@ import {
 } from '@/utils/pdf/formatters';
 
 describe('pdf formatters', () => {
+  it('supports whole-lira amounts for compact branch reports', () => {
+    expect(formatCurrencyPdf(1234, 0)).toBe('₺1.234');
+    expect(formatCurrencyPdf(-1234.56, 0)).toBe('-₺1.235');
+    expect(formatBalanceAmountPdf(-1234.56, 0)).toBe('₺1.235');
+    expect(formatBalanceAmountPdf(0, 0)).toBe('₺0');
+    expect(formatBalanceAmountPdf(null, 0)).toBe('—');
+    expect(formatCurrencyPdf(NaN, 0)).toBe('—');
+  });
   it('uses Istanbul date rollover for report timestamps, without shifting business dates', () => {
     expect(formatShortDatePdf('2026-12-31T21:15:00Z')).toBe('01.01.2027');
     expect(formatLongDatePdf('2026-12-31T21:15:00Z')).toBe('01 Ocak 2027');

@@ -411,6 +411,8 @@ export type BranchAnalyticsStatus = 'all' | 'active' | 'inactive';
 export type BranchAnalyticsSortBy =
   | 'name'
   | 'balance'
+  | 'delivered_qty'
+  | 'returned_qty'
   | 'return_rate'
   | 'last_activity'
   | 'location';
