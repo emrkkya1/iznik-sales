@@ -42,6 +42,8 @@ const DOW_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const SORT_LABELS: Record<string, string> = {
   name: 'Şube Adı',
   balance: 'Bakiye',
+  delivered_qty: 'Verilen',
+  returned_qty: 'Alınan',
   return_rate: 'İade Oranı',
   last_activity: 'Son İşlem',
   location: 'Konum',
@@ -95,11 +97,11 @@ function buildKpis(snap: BranchReportSnapshot): string {
       <div class="section-title">Genel Bakış</div>
       <div class="row gap-8">
         ${card('Şube Sayısı', esc(formatQtyPdf(s.branchCount)), `${formatQtyPdf(s.activeBranchCount)} aktif`)}
-        ${card('Toplam Satış', esc(formatCurrencyPdf(s.totalSales)))}
-        ${card('Toplam Tahsilat', esc(formatCurrencyPdf(s.totalCollection)))}
+        ${card('Toplam Satış', esc(formatCurrencyPdf(s.totalSales, 0)))}
+        ${card('Toplam Tahsilat', esc(formatCurrencyPdf(s.totalCollection, 0)))}
       </div>
       <div class="row gap-8" style="margin-top:8px;">
-        ${card('Net Bakiye', esc(formatBalanceAmountPdf(s.balanceSum)), getBalanceLabelPdf(s.balanceSum) ?? undefined)}
+        ${card('Net Bakiye', esc(formatBalanceAmountPdf(s.balanceSum, 0)), getBalanceLabelPdf(s.balanceSum) ?? undefined)}
         ${card('İade Oranı', esc(formatPercentPdf(s.returnRate)))}
         ${card('Son İşlem', esc(s.lastActivityDate ? formatShortDatePdf(s.lastActivityDate) : '—'))}
       </div>
@@ -124,9 +126,11 @@ function renderTable(
       <tr>
         <td class="muted">${opts.startIndex + i + 1}</td>
         <td>${esc(row.name)}${row.isActive ? '' : ' <span class="muted">(pasif)</span>'}<span class="cell-context">${esc(row.cityName)} / ${esc(row.districtName)}</span></td>
-        <td class="num">${esc(formatCurrencyPdf(row.salesTotal))}</td>
-        <td class="num">${esc(formatCurrencyPdf(row.collectionTotal))}</td>
-        <td class="num">${esc(formatBalanceAmountPdf(row.currentBalance))} ${balanceChip(row.currentBalance)}</td>
+        <td class="num">${esc(formatCurrencyPdf(row.salesTotal, 0))}</td>
+        <td class="num">${esc(formatCurrencyPdf(row.collectionTotal, 0))}</td>
+        <td class="num">${esc(formatBalanceAmountPdf(row.currentBalance, 0))}<span class="cell-context">${balanceChip(row.currentBalance)}</span></td>
+        <td class="num">${esc(formatQtyPdf(row.deliveredQty))}</td>
+        <td class="num">${esc(formatQtyPdf(row.returnedQty))}</td>
         <td class="num destruct">${esc(formatPercentPdf(row.returnRate))}</td>
         <td class="num muted">${esc(row.lastActivityDate ? formatShortDatePdf(row.lastActivityDate) : '—')}</td>
       </tr>`)
@@ -135,9 +139,11 @@ function renderTable(
   const totals = opts.withTotals
     ? `<tfoot><tr>
         <td></td><td class="strong">Toplam (${snap.summary.branchCount} şube)</td>
-        <td class="num">${esc(formatCurrencyPdf(snap.summary.totalSales))}</td>
-        <td class="num">${esc(formatCurrencyPdf(snap.summary.totalCollection))}</td>
-        <td class="num">${esc(formatBalanceAmountPdf(snap.summary.balanceSum))}</td>
+        <td class="num">${esc(formatCurrencyPdf(snap.summary.totalSales, 0))}</td>
+        <td class="num">${esc(formatCurrencyPdf(snap.summary.totalCollection, 0))}</td>
+        <td class="num">${esc(formatBalanceAmountPdf(snap.summary.balanceSum, 0))}<span class="cell-context">${balanceChip(snap.summary.balanceSum)}</span></td>
+        <td class="num">${esc(formatQtyPdf(snap.summary.deliveredQty))}</td>
+        <td class="num">${esc(formatQtyPdf(snap.summary.returnedQty))}</td>
         <td class="num">${esc(formatPercentPdf(snap.summary.returnRate))}</td>
         <td></td>
       </tr></tfoot>`
@@ -147,16 +153,19 @@ function renderTable(
     <div class="chart-wrap">
       <table class="branch-list-table">
         <colgroup>
-          <col style="width:4%"><col style="width:25%"><col style="width:14%">
-          <col style="width:14%"><col style="width:19%"><col style="width:8%"><col style="width:16%">
+          <col style="width:5%"><col style="width:20%"><col style="width:12%">
+          <col style="width:12%"><col style="width:13%"><col style="width:9%">
+          <col style="width:9%"><col style="width:8%"><col style="width:12%">
         </colgroup>
         <thead>
           <tr>
-            <th style="width:16px">#</th>
+            <th>#</th>
             <th>Şube / Şehir / İlçe</th>
             <th class="num">Satış ₺</th>
             <th class="num">Tahsilat ₺</th>
             <th class="num">Bakiye</th>
+            <th class="num">Verilen</th>
+            <th class="num">Alınan</th>
             <th class="num">İade %</th>
             <th class="num">Son İşlem</th>
           </tr>

@@ -16,9 +16,17 @@ export function formatDate(value: Date | string): string {
 // Bakiye gösterimi için mutlak tutar. Bakiye tek bir değer olarak sunulur;
 // yön bilgisi etiketten (Alacak/Borç) ve renkten gelir, "+/-" işareti
 // göstermeyiz.
-export function formatBalanceAmount(value: number): string {
+export function formatBalanceAmount(value: number, fractionDigits: 0 | 2 = 2): string {
+  if (fractionDigits === 0) return wholeCurrencyFormatter.format(Math.abs(value));
   return currencyFormatter.format(Math.abs(value));
 }
+
+const wholeCurrencyFormatter = new Intl.NumberFormat('tr-TR', {
+  style: 'currency',
+  currency: 'TRY',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
 
 // Bakiye yön etiketi (fırın perspektifinden):
 //   value > 0  → "Alacak"  (şube bize borçlu, tahsil edeceğiz)

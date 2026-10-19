@@ -18,6 +18,11 @@ describe('formatDate', () => {
 });
 
 describe('formatBalanceAmount', () => {
+  it('supports whole-lira branch balances without changing the default precision', () => {
+    expect(formatBalanceAmount(1234, 0)).toBe('₺1.234');
+    expect(formatBalanceAmount(-1234.56, 0)).toBe('₺1.235');
+    expect(formatBalanceAmount(0, 0)).toBe('₺0');
+  });
   it('renders the positive amount as currency without a sign', () => {
     expect(formatBalanceAmount(1234.56)).toBe('₺1.234,56');
   });

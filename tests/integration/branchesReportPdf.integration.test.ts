@@ -13,6 +13,7 @@ type FixtureIds = {
   cityId: string;
   districtId: string;
   branchId: string;
+  emptyBranchId: string;
   productId: string;
   branchProductId: string;
   deliveryIds: string[];
@@ -40,8 +41,14 @@ type SnapshotShape = {
 
 async function cleanup(admin: AdminClient) {
   if (ids.deliveryIds && ids.deliveryIds.length > 0) {
-    await admin.from('delivery_items').delete().in('delivery_id', ids.deliveryIds);
-    await admin.from('deliveries').delete().in('id', ids.deliveryIds);
+    // Payments reference deliveries without ON DELETE CASCADE. Remove them
+    // first so this suite cannot leave itemless deliveries in later reports.
+    const payments = await admin.from('payments').delete().in('delivery_id', ids.deliveryIds);
+    expect(payments.error).toBeNull();
+    const items = await admin.from('delivery_items').delete().in('delivery_id', ids.deliveryIds);
+    expect(items.error).toBeNull();
+    const deliveries = await admin.from('deliveries').delete().in('id', ids.deliveryIds);
+    expect(deliveries.error).toBeNull();
   }
   if (ids.branchProductId) {
     await admin.from('branch_product_prices').delete().eq('branch_product_id', ids.branchProductId);
@@ -52,6 +59,9 @@ async function cleanup(admin: AdminClient) {
   }
   if (ids.branchId) {
     await admin.from('branches').delete().eq('id', ids.branchId);
+  }
+  if (ids.emptyBranchId) {
+    await admin.from('branches').delete().eq('id', ids.emptyBranchId);
   }
   if (ids.districtId) {
     await admin.from('districts').delete().eq('id', ids.districtId);
@@ -95,6 +105,12 @@ describe('Şubeler raporu — report_branches_pdf RPC (M26, integration)', () =>
       .single();
     if (branch.error || !branch.data) throw new Error(`branch: ${branch.error?.message}`);
     ids.branchId = branch.data.id;
+
+    const emptyBranch = await admin.from('branches').insert({
+      district_id: ids.districtId, name: `${PREFIX} Empty`, current_balance: 0, opening_balance: 0, is_active: true,
+    }).select('id').single();
+    if (emptyBranch.error || !emptyBranch.data) throw new Error(`empty branch: ${emptyBranch.error?.message}`);
+    ids.emptyBranchId = emptyBranch.data.id;
 
     const product = await admin
       .from('products')
@@ -146,6 +162,13 @@ describe('Şubeler raporu — report_branches_pdf RPC (M26, integration)', () =>
   });
 
   describe('authorization', () => {
+    for (const rpc of ['list_branches_analytics', 'report_branches_pdf']) {
+      it.each(['delivered_qty', 'returned_qty'])(`${rpc} rejects non-admin quantity sorting: %s`, async (sortBy) => {
+        const anon = await createAnonClient();
+        expect((await anon.rpc(rpc, { p_sort_by: sortBy })).error).toBeTruthy();
+        expect((await staff.rpc(rpc, { p_sort_by: sortBy })).error).toBeTruthy();
+      });
+    }
     it('rejects anonymous callers', async () => {
       const anon = await createAnonClient();
       const r = await anon.rpc('report_branches_pdf', {});
@@ -159,6 +182,9 @@ describe('Şubeler raporu — report_branches_pdf RPC (M26, integration)', () =>
   });
 
   describe('input validation', () => {
+    it.each(['list_branches_analytics', 'report_branches_pdf'])('%s rejects unknown sort keys', async (rpc) => {
+      expect((await admin.rpc(rpc, { p_sort_by: 'unknown_qty' })).error).toBeTruthy();
+    });
     it('rejects an invalid status', async () => {
       const r = await admin.rpc('report_branches_pdf', { p_status: 'bogus' });
       expect(r.error).toBeTruthy();
@@ -193,6 +219,27 @@ describe('Şubeler raporu — report_branches_pdf RPC (M26, integration)', () =>
   });
 
   describe('admin happy path', () => {
+    for (const sortBy of ['delivered_qty', 'returned_qty']) {
+      it.each(['asc', 'desc'])(`sorts ${sortBy} %s consistently across the paginated list and PDF`, async (sortDir) => {
+        const filters = { p_city_id: ids.cityId, p_sort_by: sortBy, p_sort_dir: sortDir };
+        const list = await admin.rpc('list_branches_analytics', filters);
+        const report = await admin.rpc('report_branches_pdf', filters);
+        expect(list.error).toBeNull();
+        expect(report.error).toBeNull();
+        const expected = sortDir === 'asc' ? [ids.emptyBranchId, ids.branchId] : [ids.branchId, ids.emptyBranchId];
+        expect(list.data.rows.map((r: { branchId: string }) => r.branchId)).toEqual(expected);
+        expect(report.data.rows.map((r: { branchId: string }) => r.branchId)).toEqual(expected);
+        expect(report.data.filters.sortBy).toBe(sortBy);
+        const page = await admin.rpc('list_branches_analytics', { ...filters, p_limit: 1, p_offset: 1 });
+        expect(page.error).toBeNull();
+        expect(page.data.rows[0].branchId).toBe(expected[1]);
+        const field = sortBy === 'delivered_qty' ? 'deliveredQty' : 'returnedQty';
+        expect(list.data.rows.find((r: { branchId: string }) => r.branchId === ids.branchId)[field]).toBe(sortBy === 'delivered_qty' ? 15 : 2);
+        const emptyRange = await admin.rpc('list_branches_analytics', { ...filters, p_date_to: '2000-01-01' });
+        expect(emptyRange.error).toBeNull();
+        expect(emptyRange.data.rows.every((r: Record<string, number>) => r[field] === 0)).toBe(true);
+      });
+    }
     it('returns the filtered set with money columns and filter echo', async () => {
       const { data, error } = await admin.rpc('report_branches_pdf', {
         p_city_id: ids.cityId,
