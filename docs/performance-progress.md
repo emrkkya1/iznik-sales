@@ -1,6 +1,6 @@
 # Tablet performance implementation progress
 
-Branch: `perf/tablet-responsiveness`. Implementation is committed in draft PR #29; not merged or released.
+Implementation from PR #29 is merged to `main` as `387de93`; its tree matches the tested implementation `424b5d5`. Smoke-verification documentation was added afterward on `perf/tablet-responsiveness`. No production deployment was performed in this session.
 
 ## Implemented in the first batch
 
