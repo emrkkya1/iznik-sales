@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState, type ReactElement } from 'react';
+import { FlatList } from 'react-native';
 
 import { Amount } from '@/components/ui/amount';
 import { Box } from '@/components/ui/box';
@@ -15,11 +16,13 @@ import { useBranchMovementsInfinite } from '@/hooks';
 import type { MovementRow } from '@/types';
 import { formatDateForDisplay } from '@/utils/dates';
 import { formatCurrency } from '@/utils/formatters';
+import { loadNextPageIfIdle } from '@/utils/pagination';
 
 import { MovementDetailSheet } from '../../../components/admin/MovementDetailSheet';
 
 type MovementsTabProps = {
   branchId: string;
+  header?: ReactElement;
 };
 
 const LIMIT = 50;
@@ -111,51 +114,37 @@ function Row({
   );
 }
 
-export function MovementsTab({ branchId }: MovementsTabProps) {
+export function MovementsTab({ branchId, header }: MovementsTabProps) {
   const infinite = useBranchMovementsInfinite(branchId, LIMIT);
 
-  const items: MovementRow[] = infinite.data?.pages.flat() ?? [];
+  const items: MovementRow[] = useMemo(() => infinite.data?.pages.flat() ?? [], [infinite.data?.pages]);
 
   const [selected, setSelected] = useState<MovementRow | null>(null);
-
-  if (infinite.isLoading) {
-    return <Spinner label="Hareketler yükleniyor…" />;
-  }
-
-  if (infinite.isError) {
-    return (
-      <QueryError
-        onRetry={() => infinite.refetch()}
-        title="Hareketler yüklenemedi"
-      />
-    );
-  }
+  const renderItem = useCallback(({ item }: { item: MovementRow }) => <Row item={item} onPress={() => setSelected(item)} />, []);
 
   return (
-    <Box className="px-6">
-      {items.length === 0 ? (
-        <EmptyState
-          title="Hareket yok"
-          subtitle="Bu şube için henüz teslimat veya tahsilat kaydı yok."
-        />
-      ) : (
-        <VStack>
-          {items.map((item) => (
-            <Row
-              key={`${item.kind}-${item.id}`}
-              item={item}
-              onPress={() => setSelected(item)}
-            />
-          ))}
-        </VStack>
-      )}
-
-      {infinite.hasNextPage ? (
+    <Box style={{ flex: 1 }}>
+      <FlatList
+        style={{ flex: 1 }}
+        data={items}
+        renderItem={renderItem}
+        keyExtractor={item => `${item.kind}-${item.id}`}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 96 }}
+        ListHeaderComponent={header ? <Box className="mb-4">{header}</Box> : null}
+        ListEmptyComponent={infinite.isLoading ? <Spinner label="Hareketler yükleniyor…" />
+          : infinite.isError ? <QueryError onRetry={() => infinite.refetch()} title="Hareketler yüklenemedi" />
+          : <EmptyState title="Hareket yok" subtitle="Bu şube için henüz teslimat veya tahsilat kaydı yok." />}
+        initialNumToRender={15}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        ListFooterComponent={infinite.isError && items.length ? (
+          <QueryError onRetry={() => infinite.refetch()} title="Hareketler yenilenemedi" />
+        ) : infinite.hasNextPage ? (
         <Box className="items-center pt-4">
           <Button
             variant="outline"
-            onPress={() => infinite.fetchNextPage()}
-            disabled={infinite.isFetchingNextPage}
+            onPress={() => loadNextPageIfIdle(infinite)}
+            disabled={infinite.isFetching}
           >
             <ButtonText>
               {infinite.isFetchingNextPage
@@ -164,7 +153,8 @@ export function MovementsTab({ branchId }: MovementsTabProps) {
             </ButtonText>
           </Button>
         </Box>
-      ) : null}
+        ) : null}
+      />
 
       <MovementDetailSheet
         item={selected}

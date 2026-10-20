@@ -2,6 +2,31 @@
 
 export const ISTANBUL_TIME_ZONE = 'Europe/Istanbul';
 
+// Fixed, lazily initialized formatters: list rows and PDF points must not
+// repeatedly initialize ICU timezone/locale machinery. Never cache the clock.
+const formatterOptions = {
+  parts: { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false },
+  date: { day: '2-digit', month: '2-digit', year: 'numeric' },
+  time: { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' },
+  seconds: { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' },
+  day: { month: 'short', day: '2-digit' },
+  month: { month: 'short', year: '2-digit' },
+} satisfies Record<string, Intl.DateTimeFormatOptions>;
+type FormatterName = keyof typeof formatterOptions;
+const formatters = new Map<FormatterName, Intl.DateTimeFormat>();
+
+function formatter(name: FormatterName): Intl.DateTimeFormat {
+  let cached = formatters.get(name);
+  if (!cached) {
+    cached = new Intl.DateTimeFormat(name === 'parts' ? 'en-US' : 'tr-TR', {
+      timeZone: ISTANBUL_TIME_ZONE,
+      ...formatterOptions[name],
+    });
+    formatters.set(name, cached);
+  }
+  return cached;
+}
+
 // Business dates and zone-less legacy timestamps are Istanbul wall time.
 // Zoned timestamps represent instants: preserve their offset when parsing.
 // Normalize PostgreSQL's space separator, microseconds, and short +00 offset
@@ -30,15 +55,7 @@ interface IstanbulParts {
 // Extracts calendar components in Europe/Istanbul without relying on
 // `toLocaleString` output parsing (unreliable under Hermes).
 function getIstanbulParts(date: Date): IstanbulParts {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: ISTANBUL_TIME_ZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).formatToParts(date);
+  const parts = formatter('parts').formatToParts(date);
 
   const get = (type: string): number => {
     const value = parts.find((p) => p.type === type)?.value ?? '0';
@@ -93,11 +110,9 @@ export function getDatePresetRange(
 // Staff may edit a delivery only if its business date is today in
 // Europe/Istanbul and the local time is before 23:59.
 export function canEditDelivery(deliveryDate: string): boolean {
-  if (deliveryDate !== getIstanbulToday()) {
-    return false;
-  }
-
-  const { hour, minute } = getIstanbulParts(new Date());
+  const { year, month, day, hour, minute } = getIstanbulParts(new Date());
+  const today = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  if (deliveryDate !== today) return false;
   return hour < 23 || (hour === 23 && minute < 59);
 }
 
@@ -106,12 +121,7 @@ export function canEditDelivery(deliveryDate: string): boolean {
 export function formatDateForDisplay(date: string): string {
   const parsed = parseDisplayDate(date);
   if (Number.isNaN(parsed.getTime())) return date;
-  return new Intl.DateTimeFormat('tr-TR', {
-    timeZone: ISTANBUL_TIME_ZONE,
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(parsed);
+  return formatter('date').format(parsed);
 }
 
 // YYYY-MM-DD -> Date using local calendar. Noon avoids any UTC day-shift when
@@ -133,12 +143,7 @@ export function formatTime(iso: string, includeSeconds = false): string {
   if (!iso) return '';
   const date = parseDisplayDate(iso);
   if (Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat('tr-TR', {
-    timeZone: ISTANBUL_TIME_ZONE,
-    hour: '2-digit', minute: '2-digit',
-    ...(includeSeconds ? { second: '2-digit' as const } : {}),
-    hourCycle: 'h23',
-  }).format(date);
+  return formatter(includeSeconds ? 'seconds' : 'time').format(date);
 }
 
 // Convert the instant, not just its textual clock portion.
@@ -156,11 +161,7 @@ export function formatDateBucketLabel(bucket: string, granularity: 'day' | 'week
   const date = parseDisplayDate(bucket);
   if (Number.isNaN(date.getTime())) return bucket;
   if (granularity !== 'week') {
-    return new Intl.DateTimeFormat('tr-TR', {
-      timeZone: ISTANBUL_TIME_ZONE,
-      month: 'short',
-      ...(granularity === 'day' ? { day: '2-digit' as const } : { year: '2-digit' as const }),
-    }).format(date);
+    return formatter(granularity).format(date);
   }
   const { year, month, day } = getIstanbulParts(date);
   const tmp = new Date(Date.UTC(year, month - 1, day));

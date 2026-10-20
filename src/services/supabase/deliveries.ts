@@ -1,16 +1,15 @@
 import type { DeliveryRepository } from '@/services/contracts';
 import type {
-  Branch,
   Delivery,
   DeliveryItem,
   DeliveryWithItems,
   Payment,
-  Product,
-  ReceiptSummary,
 } from '@/types';
 
-import { buildReceiptSummary } from '../receiptSummary';
 import { toSnakeCaseItems } from '../deliveryItems';
+import { financialRpcError, FinancialWriteCommittedError } from '../financialOperationErrors';
+import { receiptSchema } from './receiptSchema';
+import { logMutation } from '@/utils/logger';
 import { supabaseClient } from './supabaseClient';
 import { getIstanbulToday } from '@/utils/dates';
 
@@ -84,92 +83,6 @@ function mapPayment(row: {
     deletedBy: row.deleted_by,
     deletionReason: row.deletion_reason,
   };
-}
-
-// Fetches all related rows needed to build a receipt summary.
-async function fetchReceiptSummary(deliveryId: string): Promise<ReceiptSummary> {
-  const { data: delivery, error: deliveryError } = await supabaseClient
-    .from('deliveries')
-    .select(
-      'id, branch_id, user_id, total_sales_amount, date, idempotency_key, deleted_at, deleted_by, deletion_reason, created_at',
-    )
-    .eq('id', deliveryId)
-    .single();
-
-  if (deliveryError) throw deliveryError;
-
-  const { data: items, error: itemsError } = await supabaseClient
-    .from('delivery_items')
-    .select(
-      'id, delivery_id, product_id, delivered_quantity, returned_quantity, net_quantity, unit_price',
-    )
-    .eq('delivery_id', deliveryId);
-
-  if (itemsError) throw itemsError;
-
-  const { data: payments, error: paymentsError } = await supabaseClient
-    .from('payments')
-    .select(
-      'id, branch_id, user_id, delivery_id, amount, payment_type, date, deleted_at, deleted_by, deletion_reason',
-    )
-    .eq('delivery_id', deliveryId)
-    .is('deleted_at', null);
-
-  if (paymentsError) throw paymentsError;
-
-  const { data: branch, error: branchError } = await supabaseClient
-    .from('branches')
-    .select('id, district_id, name, current_balance, opening_balance, is_active')
-    .eq('id', delivery.branch_id ?? '')
-    .single();
-
-  if (branchError) throw branchError;
-
-  const productIds = (items ?? [])
-    .map((item) => item.product_id)
-    .filter((id): id is string => Boolean(id));
-  let products: {
-    id: string;
-    name: string;
-    image_url: string | null;
-    is_active: boolean;
-  }[] = [];
-
-  if (productIds.length > 0) {
-    const { data: productData, error: productsError } = await supabaseClient
-      .from('products')
-      .select('id, name, image_url, is_active')
-      .in('id', productIds);
-
-    if (productsError) throw productsError;
-
-    products = (productData ?? []).map((p) => ({
-      id: p.id,
-      name: p.name,
-      image_url: p.image_url,
-      is_active: p.is_active ?? true,
-    }));
-  }
-
-  return buildReceiptSummary({
-    delivery: mapDelivery(delivery),
-    items: (items ?? []).map(mapDeliveryItem),
-    products: products.map((p) => ({
-      id: p.id,
-      name: p.name,
-      imageUrl: p.image_url,
-      isActive: p.is_active,
-    })) satisfies Product[],
-    payments: (payments ?? []).map(mapPayment),
-    branch: {
-      id: branch.id,
-      districtId: branch.district_id ?? '',
-      name: branch.name,
-      currentBalance: branch.current_balance ?? 0,
-      openingBalance: branch.opening_balance ?? 0,
-      isActive: branch.is_active ?? true,
-    } satisfies Branch,
-  });
 }
 
 export const supabaseDeliveryRepository: DeliveryRepository = {
@@ -279,31 +192,38 @@ export const supabaseDeliveryRepository: DeliveryRepository = {
     } satisfies DeliveryWithItems;
   },
 
-  async createDelivery(input, idempotencyKey) {
-    const { data, error } = await supabaseClient.rpc('create_delivery_atomic', {
+  async createDelivery(input, idempotencyKey, actorId) {
+    const { data, error } = await supabaseClient.rpc('create_delivery_with_receipt', {
       p_branch_id: input.branchId,
       p_items: toSnakeCaseItems(input.items),
       p_payment_amount: input.paymentAmount,
       p_payment_type: input.paymentType,
       p_date: input.date,
       p_idempotency_key: idempotencyKey,
+      p_actor_id: actorId,
     });
 
-    if (error) throw error;
-
-    return fetchReceiptSummary(data);
+    if (error) throw financialRpcError(error);
+    logMutation('create_delivery_with_receipt', 'success', { phase: 'write_committed', idempotencyKey });
+    const receipt = receiptSchema.safeParse(data);
+    if (!receipt.success) throw new FinancialWriteCommittedError();
+    return receipt.data;
   },
 
-  async updateDelivery(input) {
-    const { error } = await supabaseClient.rpc('update_delivery_atomic', {
+  async updateDelivery(input, idempotencyKey, actorId) {
+    const { data, error } = await supabaseClient.rpc('update_delivery_with_receipt', {
       p_delivery_id: input.deliveryId,
       p_items: toSnakeCaseItems(input.items),
       p_date: input.date,
+      p_idempotency_key: idempotencyKey,
+      p_actor_id: actorId,
     });
 
-    if (error) throw error;
-
-    return fetchReceiptSummary(input.deliveryId);
+    if (error) throw financialRpcError(error);
+    logMutation('update_delivery_with_receipt', 'success', { phase: 'write_committed', idempotencyKey });
+    const receipt = receiptSchema.safeParse(data);
+    if (!receipt.success) throw new FinancialWriteCommittedError();
+    return receipt.data;
   },
 
   async softDeleteDelivery(id, reason) {

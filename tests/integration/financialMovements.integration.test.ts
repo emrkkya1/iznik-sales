@@ -35,7 +35,7 @@ describe('financial movement history', () => {
     admin = await createAdminClient(); staff = await createStaffClient(); anon = await createAnonClient();
     const district = await admin.from('districts').select('id').limit(1).single();
     if (district.error) throw district.error;
-    const b = await admin.from('branches').insert({ name: prefix, district_id: district.data.id }).select('id').single();
+    const b = await serviceClient().from('branches').insert({ name: prefix, district_id: district.data.id }).select('id').single();
     if (b.error) throw b.error; branch = b.data.id;
     const p = await admin.from('products').insert({ name: prefix, is_active: true }).select('id').single();
     if (p.error) throw p.error; product = p.data.id;
@@ -46,13 +46,13 @@ describe('financial movement history', () => {
   });
   afterAll(async () => {
     if (!branch) return;
-    await admin.from('payments').delete().eq('branch_id', branch);
-    if (deliveryIds.length) await admin.from('delivery_items').delete().in('delivery_id', deliveryIds);
-    await admin.from('deliveries').delete().eq('branch_id', branch);
+    await serviceClient().from('payments').delete().eq('branch_id', branch);
+    if (deliveryIds.length) await serviceClient().from('delivery_items').delete().in('delivery_id', deliveryIds);
+    await serviceClient().from('deliveries').delete().eq('branch_id', branch);
     await admin.from('branch_product_prices').delete().eq('branch_product_id', bp);
     await admin.from('branch_products').delete().eq('id', bp);
     await admin.from('products').delete().eq('id', product);
-    await admin.from('branches').delete().eq('id', branch);
+    await serviceClient().from('branches').delete().eq('id', branch);
   });
 
   it('captures a complete creation snapshot and actor once, including linked collection', async () => {

@@ -47,6 +47,8 @@ export async function createAnonClient(): Promise<AnonClient> {
   return createClient(URL, ANON_KEY, NO_AUTH);
 }
 
+// Server-only fixture/provisioning client. Never sign in as an application
+// user on this instance: that would replace its service-role authorization.
 export function serviceClient(): AdminClient {
   return createClient(URL, SERVICE_KEY, NO_AUTH);
 }

@@ -24,15 +24,15 @@ describe('close_branch_receivables (integration)', () => {
     const district = await admin.from('districts').select('id').limit(1).single();
     if (district.error) throw district.error;
     for (const [name, amount] of Object.entries(amounts)) {
-      const branch = await admin.from('branches').insert({ name: `${PREFIX}-${name}`, district_id: district.data.id, opening_balance: amount, current_balance: amount, is_active: true }).select('id').single();
+      const branch = await serviceClient().from('branches').insert({ name: `${PREFIX}-${name}`, district_id: district.data.id, opening_balance: amount, current_balance: amount, is_active: true }).select('id').single();
       if (branch.error) throw branch.error;
       ids[name] = branch.data.id;
     }
   });
   afterAll(async () => {
     if (!admin || !Object.keys(ids).length) return;
-    await admin.from('payments').delete().in('branch_id', Object.values(ids));
-    await admin.from('branches').delete().in('id', Object.values(ids));
+    await serviceClient().from('payments').delete().in('branch_id', Object.values(ids));
+    await serviceClient().from('branches').delete().in('id', Object.values(ids));
     await serviceClient().from('receivable_payment_batches').delete().like('idempotency_key', `${PREFIX}%`);
   });
 

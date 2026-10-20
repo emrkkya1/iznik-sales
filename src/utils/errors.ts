@@ -20,6 +20,9 @@ export function getUserMessage(error: unknown): string {
   const err = error as SupabaseLikeError | null;
 
   if (err && typeof err === 'object') {
+    if (['PendingFinancialOperationError', 'FinancialOutcomeUnknownError', 'FinancialWriteCommittedError'].includes(err.name ?? '')) {
+      return err.message ?? errorMessages.unknown;
+    }
     if (err.name === 'InactiveAccountError' || /inactive/i.test(err.message ?? '')) {
       return errorMessages.inactive;
     }
@@ -61,6 +64,7 @@ export function getUserMessage(error: unknown): string {
     if (/validation|invalid input|violates/i.test(message)) {
       return errorMessages.validation;
     }
+    if (err.name === 'FinancialWriteRejectedError') return errorMessages.validation;
   }
 
   return errorMessages.unknown;

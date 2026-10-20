@@ -19,6 +19,7 @@ import type { FinancialEvent } from '@/services/supabase/financialMovementSchema
 import { formatDateForDisplay, formatDateTime } from '@/utils/dates';
 import { financialActorLabel, financialEventTitle } from '@/utils/financialMovements';
 import { formatCurrency } from '@/utils/formatters';
+import { loadNextPageIfIdle } from '@/utils/pagination';
 
 function MovementHistoryRow({ event, onDetails, onMenu }: {
   event: FinancialEvent; onDetails: () => void;
@@ -94,7 +95,7 @@ export function AllMovementsScreen() {
         ListEmptyComponent={<EmptyState title="Hareket yok" subtitle="Finansal işlemler burada listelenecek." />}
         ListFooterComponent={<Box className="items-center p-4">
           {query.isFetchNextPageError ? <Text size="sm" className="text-destructive">Sonraki sayfa yüklenemedi. Tekrar deneyin.</Text> : null}
-          {query.hasNextPage ? <Button variant="outline" disabled={query.isFetchingNextPage} onPress={() => query.fetchNextPage()}><ButtonText>{query.isFetchingNextPage ? 'Yükleniyor…' : `Daha Fazla Yükle (${rows.length})`}</ButtonText></Button> : null}
+          {query.hasNextPage ? <Button variant="outline" disabled={query.isFetching} onPress={() => loadNextPageIfIdle(query)}><ButtonText>{query.isFetchingNextPage ? 'Yükleniyor…' : `Daha Fazla Yükle (${rows.length})`}</ButtonText></Button> : null}
         </Box>}
       />}
       <ActionMenu open={!!menu} anchor={menu?.anchor ?? null} onClose={() => setMenu(null)} items={menu ? [

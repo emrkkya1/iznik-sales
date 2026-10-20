@@ -1,3 +1,4 @@
+import { serviceClient } from './_helpers/clients';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createAdminClient, createAnonClient, createStaffClient, type AdminClient } from './_helpers/clients';
@@ -24,7 +25,7 @@ const createdBranches: string[] = [];
 async function cleanup(admin: AdminClient) {
   for (const id of createdBranches) {
     await admin.from('branch_products').delete().eq('branch_id', id);
-    await admin.from('branches').delete().eq('id', id);
+    await serviceClient().from('branches').delete().eq('id', id);
   }
   for (const id of createdDistricts) {
     await admin.from('districts').delete().eq('id', id);

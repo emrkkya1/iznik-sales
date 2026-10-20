@@ -1,3 +1,4 @@
+import { serviceClient } from './_helpers/clients';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -43,11 +44,11 @@ async function cleanup(admin: AdminClient) {
   if (ids.deliveryIds && ids.deliveryIds.length > 0) {
     // Payments reference deliveries without ON DELETE CASCADE. Remove them
     // first so this suite cannot leave itemless deliveries in later reports.
-    const payments = await admin.from('payments').delete().in('delivery_id', ids.deliveryIds);
+    const payments = await serviceClient().from('payments').delete().in('delivery_id', ids.deliveryIds);
     expect(payments.error).toBeNull();
-    const items = await admin.from('delivery_items').delete().in('delivery_id', ids.deliveryIds);
+    const items = await serviceClient().from('delivery_items').delete().in('delivery_id', ids.deliveryIds);
     expect(items.error).toBeNull();
-    const deliveries = await admin.from('deliveries').delete().in('id', ids.deliveryIds);
+    const deliveries = await serviceClient().from('deliveries').delete().in('id', ids.deliveryIds);
     expect(deliveries.error).toBeNull();
   }
   if (ids.branchProductId) {
@@ -58,10 +59,10 @@ async function cleanup(admin: AdminClient) {
     await admin.from('products').delete().eq('id', ids.productId);
   }
   if (ids.branchId) {
-    await admin.from('branches').delete().eq('id', ids.branchId);
+    await serviceClient().from('branches').delete().eq('id', ids.branchId);
   }
   if (ids.emptyBranchId) {
-    await admin.from('branches').delete().eq('id', ids.emptyBranchId);
+    await serviceClient().from('branches').delete().eq('id', ids.emptyBranchId);
   }
   if (ids.districtId) {
     await admin.from('districts').delete().eq('id', ids.districtId);
@@ -92,7 +93,7 @@ describe('Şubeler raporu — report_branches_pdf RPC (M26, integration)', () =>
     if (district.error || !district.data) throw new Error(`district: ${district.error?.message}`);
     ids.districtId = district.data.id;
 
-    const branch = await admin
+    const branch = await serviceClient()
       .from('branches')
       .insert({
         district_id: ids.districtId,
@@ -106,7 +107,7 @@ describe('Şubeler raporu — report_branches_pdf RPC (M26, integration)', () =>
     if (branch.error || !branch.data) throw new Error(`branch: ${branch.error?.message}`);
     ids.branchId = branch.data.id;
 
-    const emptyBranch = await admin.from('branches').insert({
+    const emptyBranch = await serviceClient().from('branches').insert({
       district_id: ids.districtId, name: `${PREFIX} Empty`, current_balance: 0, opening_balance: 0, is_active: true,
     }).select('id').single();
     if (emptyBranch.error || !emptyBranch.data) throw new Error(`empty branch: ${emptyBranch.error?.message}`);

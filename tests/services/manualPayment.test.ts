@@ -4,12 +4,13 @@ import { supabasePaymentRepository } from '@/services/supabase/payments';
 
 const mocks = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn(), select: vi.fn(), eq: vi.fn(), single: vi.fn() }));
 vi.mock('@/services/supabase/supabaseClient', () => ({ supabaseClient: { rpc: mocks.rpc, from: mocks.from } }));
+vi.mock('@/utils/logger', () => ({ logMutation: vi.fn() }));
 
-const input = { branchId: 'branch-1', amount: 125.5, paymentType: 'bank_transfer' as const, date: '2026-10-12' };
+const actor = '00000000-0000-4000-8000-000000000001';
+const input = { branchId: '00000000-0000-4000-8000-000000000002', amount: 125.5, paymentType: 'bank_transfer' as const, date: '2026-10-12' };
 const row = {
-  id: 'payment-1', branch_id: input.branchId, user_id: 'admin-1', delivery_id: null,
-  amount: input.amount, payment_type: input.paymentType, date: input.date,
-  deleted_at: null, deleted_by: null, deletion_reason: null,
+  id: '00000000-0000-4000-8000-000000000003', ...input, userId: actor, deliveryId: null,
+  deletedAt: null, deletedBy: null, deletionReason: null,
 };
 
 beforeEach(() => {
@@ -17,37 +18,42 @@ beforeEach(() => {
   mocks.from.mockReturnValue({ select: mocks.select });
   mocks.select.mockReturnValue({ eq: mocks.eq });
   mocks.eq.mockReturnValue({ single: mocks.single });
-  mocks.rpc.mockResolvedValue({ data: 'payment-1', error: null });
+  mocks.rpc.mockResolvedValue({ data: row, error: null });
   mocks.single.mockResolvedValue({ data: row, error: null });
 });
 
 describe('manual payment repository', () => {
   it('forwards the retry key and maps the standalone payment', async () => {
-    const result = await supabasePaymentRepository.recordManualPayment(input, 'retry-key');
-    expect(mocks.rpc).toHaveBeenCalledWith('record_manual_payment_atomic', {
+    const result = await supabasePaymentRepository.recordManualPayment(input, 'retry-key', actor);
+    expect(mocks.rpc).toHaveBeenCalledWith('record_manual_payment_with_receipt', {
       p_branch_id: input.branchId, p_amount: input.amount, p_payment_type: input.paymentType,
-      p_date: input.date, p_idempotency_key: 'retry-key',
+      p_date: input.date, p_idempotency_key: 'retry-key', p_actor_id: actor,
     });
-    expect(result).toEqual({
-      id: 'payment-1', ...input, userId: 'admin-1', deliveryId: null,
-      deletedAt: null, deletedBy: null, deletionReason: null,
-    });
+    expect(result).toEqual(row);
+    expect(mocks.from).not.toHaveBeenCalled();
   });
 
   it('does not fetch a payment after RPC rejection', async () => {
     const error = new Error('Not authorized');
     mocks.rpc.mockResolvedValue({ data: null, error });
-    await expect(supabasePaymentRepository.recordManualPayment(input, 'retry-key')).rejects.toBe(error);
+    await expect(supabasePaymentRepository.recordManualPayment(input, 'retry-key', actor)).rejects.toBe(error);
     expect(mocks.from).not.toHaveBeenCalled();
   });
 
-  it('uses the same key when retrying after a post-write fetch failure', async () => {
+  it('uses the same key after a lost RPC response without issuing a post-write read', async () => {
     const error = new Error('Response lost');
-    mocks.single.mockResolvedValueOnce({ data: null, error });
-    await expect(supabasePaymentRepository.recordManualPayment(input, 'retry-key')).rejects.toBe(error);
-    await expect(supabasePaymentRepository.recordManualPayment(input, 'retry-key')).resolves.toMatchObject({ id: 'payment-1' });
+    mocks.rpc.mockResolvedValueOnce({ data: null, error });
+    await expect(supabasePaymentRepository.recordManualPayment(input, 'retry-key', actor)).rejects.toBe(error);
+    await expect(supabasePaymentRepository.recordManualPayment(input, 'retry-key', actor)).resolves.toEqual(row);
     expect(mocks.rpc).toHaveBeenCalledTimes(2);
     for (const [, params] of mocks.rpc.mock.calls) expect(params.p_idempotency_key).toBe('retry-key');
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+  it('distinguishes committed malformed receipts from transaction rejection', async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: {}, error: null });
+    await expect(supabasePaymentRepository.recordManualPayment(input, 'retry-key', actor)).rejects.toMatchObject({ name: 'FinancialWriteCommittedError' });
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: 'P0001', message: 'Invalid payment amount' } });
+    await expect(supabasePaymentRepository.recordManualPayment(input, 'retry-key', actor)).rejects.toMatchObject({ name: 'FinancialWriteRejectedError' });
   });
 });
 

@@ -13,6 +13,7 @@ import { HStack } from '@/components/ui/hstack';
 import { BanknoteIcon, Icon, MoreVerticalIcon, TruckIcon } from '@/components/ui/icon';
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
+import { VStack } from '@/components/ui/vstack';
 import { ReportFilterConfig } from '@/components/reports/ReportFilterConfig';
 import { ExportSheet } from '@/components/reports/ExportSheet';
 import { ExportTriggerButton } from '@/components/reports/ExportTriggerButton';
@@ -95,17 +96,8 @@ export function BranchHubScreen() {
       ]
     : [];
 
-  return (
-    <Box style={{ flex: 1 }} className="bg-background">
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingHorizontal: 24,
-          paddingTop: 24,
-          paddingBottom: 96,
-          gap: 16,
-        }}
-      >
+  const header = (
+    <VStack space="lg">
         <HStack space="md" className="items-center">
           <Text size="2xl" bold className="text-foreground">
             {data?.name ?? '…'}
@@ -213,10 +205,18 @@ export function BranchHubScreen() {
           })}
         </Box>
 
-        {activeTab === 'products' ? <ProductsTab branchId={branchId} /> : null}
-        {activeTab === 'movements' ? <MovementsTab branchId={branchId} /> : null}
-        {activeTab === 'details' ? <DetailsTab branchId={branchId} /> : null}
-      </ScrollView>
+    </VStack>
+  );
+
+  return (
+    <Box style={{ flex: 1 }} className="bg-background">
+      {activeTab === 'movements' ? <MovementsTab branchId={branchId} header={header} /> : (
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 96, gap: 16 }}>
+          {header}
+          {activeTab === 'products' ? <ProductsTab branchId={branchId} /> : null}
+          {activeTab === 'details' ? <DetailsTab branchId={branchId} /> : null}
+        </ScrollView>
+      )}
 
       <ExportSheet
         reportType="branch-detail"

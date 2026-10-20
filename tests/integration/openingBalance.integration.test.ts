@@ -1,3 +1,4 @@
+import { serviceClient } from './_helpers/clients';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { getIstanbulToday } from '../../src/utils/dates';
 import { createAdminClient, createAnonClient, createStaffClient, type AdminClient } from './_helpers/clients';
@@ -48,7 +49,7 @@ describe('update_branch_opening_balance (integration)', () => {
     });
     if (delivery.error) throw delivery.error;
     deliveryId = delivery.data;
-    const empty = await admin.from('branches').insert({ district_id: district.data.id, name: `${PREFIX} Empty`, opening_balance: 0, current_balance: 0, is_active: false }).select('id').single();
+    const empty = await serviceClient().from('branches').insert({ district_id: district.data.id, name: `${PREFIX} Empty`, opening_balance: 0, current_balance: 0, is_active: false }).select('id').single();
     if (empty.error) throw empty.error;
     emptyBranchId = empty.data.id;
   });
@@ -62,17 +63,17 @@ describe('update_branch_opening_balance (integration)', () => {
     if (!admin) return;
     expect((await admin.rpc('set_opening_balances_locked', { p_locked: wasLocked })).error).toBeNull();
     if (deliveryId) {
-      expect((await admin.from('payments').delete().eq('delivery_id', deliveryId)).error).toBeNull();
-      expect((await admin.from('delivery_items').delete().eq('delivery_id', deliveryId)).error).toBeNull();
-      expect((await admin.from('deliveries').delete().eq('id', deliveryId)).error).toBeNull();
+      expect((await serviceClient().from('payments').delete().eq('delivery_id', deliveryId)).error).toBeNull();
+      expect((await serviceClient().from('delivery_items').delete().eq('delivery_id', deliveryId)).error).toBeNull();
+      expect((await serviceClient().from('deliveries').delete().eq('id', deliveryId)).error).toBeNull();
     }
     if (branchId) {
       const links = await admin.from('branch_products').select('id').eq('branch_id', branchId);
       if (links.data?.length) expect((await admin.from('branch_product_prices').delete().in('branch_product_id', links.data.map(row => row.id))).error).toBeNull();
       expect((await admin.from('branch_products').delete().eq('branch_id', branchId)).error).toBeNull();
-      expect((await admin.from('branches').delete().eq('id', branchId)).error).toBeNull();
+      expect((await serviceClient().from('branches').delete().eq('id', branchId)).error).toBeNull();
     }
-    if (emptyBranchId) expect((await admin.from('branches').delete().eq('id', emptyBranchId)).error).toBeNull();
+    if (emptyBranchId) expect((await serviceClient().from('branches').delete().eq('id', emptyBranchId)).error).toBeNull();
   });
 
   it.each([125.5, -200.25, 0])('sets %s and recalculates balance without changing transactions', async (value) => {

@@ -1,3 +1,4 @@
+import { serviceClient } from './_helpers/clients';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { getIstanbulToday } from '../../src/utils/dates';
 
@@ -49,8 +50,8 @@ type SnapshotShape = {
 
 async function cleanup(admin: AdminClient) {
   if (ids.deliveryIds && ids.deliveryIds.length > 0) {
-    await admin.from('delivery_items').delete().in('delivery_id', ids.deliveryIds);
-    await admin.from('deliveries').delete().in('id', ids.deliveryIds);
+    await serviceClient().from('delivery_items').delete().in('delivery_id', ids.deliveryIds);
+    await serviceClient().from('deliveries').delete().in('id', ids.deliveryIds);
   }
   if (ids.branchProductId) {
     await admin.from('branch_product_prices').delete().eq('branch_product_id', ids.branchProductId);
@@ -60,7 +61,7 @@ async function cleanup(admin: AdminClient) {
     await admin.from('products').delete().eq('id', ids.productId);
   }
   if (ids.branchId) {
-    await admin.from('branches').delete().eq('id', ids.branchId);
+    await serviceClient().from('branches').delete().eq('id', ids.branchId);
   }
   if (ids.districtId) {
     await admin.from('districts').delete().eq('id', ids.districtId);
@@ -91,7 +92,7 @@ describe('summary PDF — report_summary_pdf RPC (M25, integration)', () => {
     if (district.error || !district.data) throw new Error(`district: ${district.error?.message}`);
     ids.districtId = district.data.id;
 
-    const branch = await admin
+    const branch = await serviceClient()
       .from('branches')
       .insert({
         district_id: ids.districtId,
@@ -199,9 +200,9 @@ describe('summary PDF — report_summary_pdf RPC (M25, integration)', () => {
         try {
           // Move one known delivery and its collection outside today's range.
           // The other fixture delivery stays today (75 sales, 75 collected).
-          const moved = await admin.from('deliveries').update({ date }).eq('id', deliveryId);
+          const moved = await serviceClient().from('deliveries').update({ date }).eq('id', deliveryId);
           expect(moved.error).toBeNull();
-          const payment = await admin.from('payments').update({ date }).eq('delivery_id', deliveryId);
+          const payment = await serviceClient().from('payments').update({ date }).eq('delivery_id', deliveryId);
           expect(payment.error).toBeNull();
 
           const kpis = await admin.rpc('report_kpis', { p_range: 'day' });
@@ -231,9 +232,9 @@ describe('summary PDF — report_summary_pdf RPC (M25, integration)', () => {
           const product = snap.productsByReturnRate.find((row) => row.id === ids.productId);
           expect(product).toMatchObject({ delivered: 5, returned: 2, returnRate: 40 });
         } finally {
-          const restored = await admin.from('deliveries').update({ date: today }).eq('id', deliveryId);
+          const restored = await serviceClient().from('deliveries').update({ date: today }).eq('id', deliveryId);
           expect(restored.error).toBeNull();
-          const payment = await admin.from('payments').update({ date: today }).eq('delivery_id', deliveryId);
+          const payment = await serviceClient().from('payments').update({ date: today }).eq('delivery_id', deliveryId);
           expect(payment.error).toBeNull();
         }
       }

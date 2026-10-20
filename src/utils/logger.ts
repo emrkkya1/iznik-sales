@@ -1,6 +1,7 @@
 // Lightweight console logging for following app activity in the terminal
 // (Metro / `expo run:android` output).
 import { formatDateTime } from './dates';
+import { recordDiagnosticEvent, startDiagnosticOperation } from './diagnostics';
 
 type MutationPhase = 'start' | 'success' | 'error';
 
@@ -15,6 +16,9 @@ export function logMutation(
   phase: MutationPhase,
   data?: unknown,
 ): void {
+  // Mutation hooks currently log phases separately and do not expose a shared
+  // attempt identity. Do not correlate by name: same-name writes can overlap.
+  recordDiagnosticEvent({ operationId: startDiagnosticOperation(), name, kind: 'mutation', phase, timestamp: Date.now() });
   const header = `[mutation:${name}] ${MUTATION_PHASE_LABEL[phase]} ${formatDateTime(new Date().toISOString())} UTC+3`;
   if (phase === 'error') console.error(header, data);
   else console.log(header, data);
@@ -53,20 +57,31 @@ export function instrumentQuery<TFn extends (...args: any[]) => Promise<any>>(
   summarize?: (result: Awaited<ReturnType<TFn>>) => unknown,
 ): TFn {
   return (async (...args: Parameters<TFn>) => {
-    const ctx = args[0] as { pageParam?: unknown } | undefined;
+    const ctx = args[0] as { pageParam?: unknown; signal?: AbortSignal } | undefined;
+    const operationId = startDiagnosticOperation();
+    const startedAt = performance.now();
+    recordDiagnosticEvent({ operationId, name, kind: 'query', phase: 'start', timestamp: Date.now() });
     logQuery(
       name,
       'fetch',
       ctx && ctx.pageParam !== undefined
-        ? { pageParam: ctx.pageParam }
-        : undefined,
+        ? { operationId, pageParam: ctx.pageParam }
+        : { operationId },
     );
     try {
       const result = await fn(...args);
-      logQuery(name, 'success', summarize ? summarize(result) : undefined);
+      const durationMs = Math.max(0, performance.now() - startedAt);
+      recordDiagnosticEvent({ operationId, name, kind: 'query', phase: 'success', timestamp: Date.now(), durationMs });
+      // Diagnostics must never turn a successful read into a failed query.
+      let summary: unknown;
+      try { summary = summarize?.(result); } catch { summary = { summaryUnavailable: true }; }
+      logQuery(name, 'success', { operationId, durationMs, summary });
       return result;
     } catch (error) {
-      logQuery(name, 'error', error);
+      const durationMs = Math.max(0, performance.now() - startedAt);
+      const cancelled = ctx?.signal?.aborted || (error instanceof Error && error.name === 'AbortError');
+      recordDiagnosticEvent({ operationId, name, kind: 'query', phase: cancelled ? 'cancelled' : 'error', timestamp: Date.now(), durationMs });
+      logQuery(name, 'error', { operationId, durationMs, cancelled, error });
       throw error;
     }
   }) as TFn;
