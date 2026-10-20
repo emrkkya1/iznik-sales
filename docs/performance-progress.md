@@ -1,6 +1,6 @@
 # Tablet performance implementation progress
 
-Branch: `perf/tablet-responsiveness`. Changes are not yet committed or released.
+Branch: `perf/tablet-responsiveness`. Implementation is committed in draft PR #29; not merged or released.
 
 ## Implemented in the first batch
 
@@ -28,13 +28,13 @@ The unit runner now includes the existing `tests/store` suite, which was previou
 - Added M46 with actor/canonical-input-bound immutable acknowledgements. Creation, edit, and manual-payment v2 RPCs return transaction results without follow-up reads; edit replay returns the saved result without reapplying an old edit. Legacy UUID-returning RPCs remain available. Pre-migration deliveries without a transaction receipt require reconciliation rather than a fabricated balance snapshot.
 - Persist operation identity and input before sending a request. Duplicate concurrent taps coalesce; unresolved operations survive remount/restart and block normal submissions, including identical input, until explicit recovery. Actor changes cannot acknowledge another user's result. Confirmed rejection, committed-but-unconfirmed responses, and unknown outcomes have separate handling.
 - Added explicit recovery controls for deliveries/edits and manual payments. Recovering an older delivery preserves the current draft. Receipt balances are labeled as transaction snapshots, not live balances.
-- Added unit/contract/schema and clean-local integration regression coverage for concurrent retries, payload/actor conflicts, lost responses, storage failure, account changes, later edits/payments, and legacy replay. `npm run test:all` passed: typecheck, lint, 514 unit tests and 185 clean-local integration tests. This caught and fixed ambiguous legacy overload dispatch and preserved existing validation messages. Native recovery UI smoke remains pending; not yet release-ready.
+- Added unit/contract/schema and clean-local integration regression coverage for concurrent retries, payload/actor conflicts, lost responses, storage failure, account changes, later edits/payments, and legacy replay. `npm run test:all` passed: typecheck, lint, 514 unit tests and 185 clean-local integration tests. This caught and fixed ambiguous legacy overload dispatch and preserved existing validation messages. Native recovery UI smoke completed; see `android-tablet-smoke.md` for results and limitations.
 
 ## Verification
 
 - Typecheck, lint, and unit tests run locally; final counts are reported in the session.
 - Android emulator smoke at 2560×1600: branch table opens; branch hub movement tab displays its header/rows and scrolls without the global error fallback. No financial writes performed.
-- Staff grid/edit-prefill native smoke is still pending: emulator is currently signed in as admin. Use a dedicated staff test session; do not create production transactions to test this.
+- Staff grid/edit-prefill and delivery/payment recovery native smoke completed against local Supabase and dedicated disposable fixtures at 2560×1600. Delivery recovery survived a process restart and preserved a newer draft; payment recovery survived sheet remount and did not duplicate a committed write. See `android-tablet-smoke.md` for precise coverage and the observed navigation-bar lifecycle warning.
 - No production database access/deployment, dependency changes, release APK build, physical-device profiling, or measured speedup claims. M45/M46 have only been applied to the disposable local test database.
 - Clean-local database integration tests remain mandatory after financial SQL changes and before a PR.
 
@@ -46,7 +46,7 @@ The unit runner now includes the existing `tests/store` suite, which was previou
 - Q5: cancellable read contracts and deadlines; unknown-outcome handling for writes.
 - Q6: bounded history retention with deliberate navigation/cursor semantics.
 - Q7: shared query keys and complete/deduplicated invalidation rules.
-- C2/C3: implementation and automated quality gates complete in batch 3; native recovery smoke remains required before release.
+- C2/C3: implementation, automated quality gates and targeted native recovery smoke complete in batch 3. Release/physical-device verification remains separate.
 - D1/D2: balance deltas and settlement optimization **after C1/C2/C3**, preserving locks/audit/atomicity and reconciliation.
 - X1: resolved-range granularity and bounded chart/export work.
 - D3/D4: filtered aggregation and evidence-backed date indexes with representative local query plans.
@@ -54,4 +54,4 @@ The unit runner now includes the existing `tests/store` suite, which was previou
 
 ## Next batch
 
-Continue auth/query lifecycle work. Transaction invariants now pass automated tests; balance-delta optimization still requires its own regression coverage. Complete staff/recovery native smoke and choose the production crash-reporting service before release.
+Continue auth/query lifecycle work. Transaction invariants now pass automated tests and targeted native smoke; balance-delta optimization still requires its own regression coverage. Choose the production crash-reporting service and perform release validation before shipping.
