@@ -4,7 +4,8 @@ import type { LayoutChangeEvent } from 'react-native';
 import { BranchSelector } from '@/components/domain/branch-selector';
 import { CheckoutSummary } from '@/components/domain/checkout-summary';
 import { PaymentReceivedInput } from '@/components/domain/payment-received-input';
-import { ProductCard } from '@/components/domain/product-card';
+import { ReceiptProductGrid, PRODUCT_GRID_GAP, PRODUCT_GRID_PADDING } from '@/components/domain/receipt-product-grid';
+import { FinancialRecoveryAction } from '@/components/domain/financial-recovery-action';
 import { Amount } from '@/components/ui/amount';
 import { BalanceAmount } from '@/components/ui/balance-amount';
 import { Box } from '@/components/ui/box';
@@ -30,8 +31,6 @@ import { formatDateForDisplay } from '@/utils/dates';
 import { getUserMessage } from '@/utils/errors';
 import { computeReceiptPreview } from '@/utils/receiptPreview';
 
-const COLUMN_GAP = 12;
-const GRID_PADDING = 16;
 const PHASES = ['Şube Seçimi', 'Ürün Seçimi', 'Gözden Geçirme'] as const;
 
 export function StaffHomeScreen() {
@@ -43,9 +42,10 @@ export function StaffHomeScreen() {
   const branches = useBranches(draft.districtId);
 
   const editingDeliveryId = draft.editingDeliveryId;
-  const { delivery: editingDelivery } = useEditPrefill(editingDeliveryId);
+  const { delivery: editingDelivery, branch: editingBranch, isReady: editReady } = useEditPrefill(editingDeliveryId);
 
   const [receipt, setReceipt] = useState<ReceiptSummary | null>(null);
+  const [recovered, setRecovered] = useState(false);
   const [phase, setPhase] = useState<1 | 2 | 3>(1);
   const [gridWidth, setGridWidth] = useState(0);
 
@@ -72,7 +72,7 @@ export function StaffHomeScreen() {
   const columns = gridWidth >= 1000 ? 5 : gridWidth >= 700 ? 4 : 3;
   const cardWidth =
     gridWidth > 0
-      ? (gridWidth - GRID_PADDING * 2 - COLUMN_GAP * (columns - 1)) / columns
+      ? (gridWidth - PRODUCT_GRID_PADDING * 2 - PRODUCT_GRID_GAP * (columns - 1)) / columns
       : 220;
 
   const handleGridLayout = (e: LayoutChangeEvent) => {
@@ -89,7 +89,7 @@ export function StaffHomeScreen() {
       returnedQuantity: entry.returned,
     }));
 
-  const canSubmit = !!draft.branchId && items.length > 0;
+  const canSubmit = !!draft.branchId && items.length > 0 && (!editingDeliveryId || editReady);
   const isEditing = !!editingDeliveryId;
   const pending = createDelivery.isPending || updateDelivery.isPending;
 
@@ -97,14 +97,22 @@ export function StaffHomeScreen() {
     (phase === 1 && !!draft.branchId) || (phase === 2 && items.length > 0);
 
   const finishWithReceipt = (summary: ReceiptSummary) => {
-    draft.rememberLast();
+    const current = useReceiptDraftStore.getState();
+    // An older completion must not erase a different draft entered elsewhere.
+    if (current.entries === draft.entries && current.branchId === draft.branchId
+      && current.date === draft.date && current.paymentAmount === draft.paymentAmount
+      && current.editingDeliveryId === draft.editingDeliveryId) {
+      current.rememberLast();
+      current.reset();
+    }
+    setRecovered(false);
     setReceipt(summary);
     setPhase(1);
-    draft.reset();
   };
 
   const handleSubmit = () => {
     if (!draft.branchId || items.length === 0) return;
+    if (editingDeliveryId && (!editReady || useReceiptDraftStore.getState().prefilledDeliveryId !== editingDeliveryId)) return;
 
     if (isEditing && editingDeliveryId) {
       updateDelivery.mutate(
@@ -127,16 +135,45 @@ export function StaffHomeScreen() {
   };
 
   const cancelEdit = () => {
+    if (pending) return;
     draft.setEditingDeliveryId(null);
     draft.clear();
     setPhase(1);
   };
 
+  const recoveredReceipt = (summary: ReceiptSummary) => {
+    setReceipt(summary);
+    setRecovered(true);
+    setPhase(1);
+  };
+  const recoveryActions = <VStack space="sm">
+    <FinancialRecoveryAction visible={createDelivery.hasPendingOperation || createDelivery.requiresRecovery} busy={pending}
+      label="Önceki teslimatı kontrol et" recover={() => createDelivery.recover({ onSuccess: recoveredReceipt })} />
+    <FinancialRecoveryAction visible={updateDelivery.hasPendingOperation || updateDelivery.requiresRecovery} busy={pending}
+      label="Önceki düzenlemeyi kontrol et" recover={() => updateDelivery.recover({ onSuccess: recoveredReceipt })} />
+  </VStack>;
+
+  if (isEditing && !editReady && !receipt) {
+    const failed = editingDelivery.isError || editingBranch.isError
+      || (editingDelivery.isSuccess && !editingDelivery.data)
+      || (editingBranch.isSuccess && !editingBranch.data);
+    return (
+      <Box style={{ flex: 1 }} className="bg-background p-4">
+        {recoveryActions}
+        {failed ? <ErrorState message="Düzenlenecek kayıt yüklenemedi." onRetry={() => {
+          void editingDelivery.refetch();
+          if (editingDelivery.data?.id === editingDeliveryId && editingDelivery.data.branchId) void editingBranch.refetch();
+        }} /> : <Spinner label="Düzenlenecek kayıt yükleniyor…" />}
+        <Button variant="outline" onPress={cancelEdit}><ButtonText>İptal</ButtonText></Button>
+      </Box>
+    );
+  }
+
   if (receipt) {
     return (
       <ResultState
-        title="Kayıt Tamamlandı"
-        subtitle="Teslimat başarıyla kaydedildi."
+        title={recovered ? 'Önceki Kayıt Doğrulandı' : 'Kayıt Tamamlandı'}
+        subtitle={recovered ? 'Önceki işlem tamamlandı. Taslağınız korunmuştur.' : 'Teslimat başarıyla kaydedildi.'}
         action={
           <Button
             variant="outline"
@@ -146,7 +183,7 @@ export function StaffHomeScreen() {
               setPhase(1);
             }}
           >
-            <ButtonText>Yeni Kayıt</ButtonText>
+              <ButtonText>{recovered ? 'Taslağa Dön' : 'Yeni Kayıt'}</ButtonText>
           </Button>
         }
       >
@@ -167,7 +204,7 @@ export function StaffHomeScreen() {
           </HStack>
           <HStack className="items-center justify-between">
             <Text size="sm" className="text-muted-foreground">
-              Yeni Bakiye
+              İşlem Sonrası Bakiye
             </Text>
             <BalanceAmount value={receipt.newBalance} size="sm" bold showLabel />
           </HStack>
@@ -179,6 +216,7 @@ export function StaffHomeScreen() {
   return (
     <Box style={{ flex: 1 }} className="bg-background p-4">
       <VStack space="sm" style={{ flex: 1 }}>
+        {recoveryActions}
         {isEditing ? (
           <HStack className="items-center justify-between rounded-lg bg-info px-4 py-2">
             <HStack space="sm" className="items-center">
@@ -244,38 +282,7 @@ export function StaffHomeScreen() {
                     subtitle="Bu şubeye ait aktif fiyatlı ürün yok."
                   />
                 ) : (
-                  <ScrollView
-                    contentContainerStyle={{
-                      flexDirection: 'row',
-                      flexWrap: 'wrap',
-                      gap: COLUMN_GAP,
-                      padding: GRID_PADDING,
-                    }}
-                  >
-                    {products.map((product) => {
-                      const entry = draft.entries[product.productId] ?? {
-                        delivered: 0,
-                        returned: 0,
-                      };
-                      return (
-                        <Box key={product.productId} style={{ width: cardWidth }}>
-                          <ProductCard
-                            name={product.productName}
-                            imageUrl={product.productImageUrl}
-                            price={product.currentPrice}
-                            delivered={entry.delivered}
-                            returned={entry.returned}
-                            onDeliveredChange={(quantity) =>
-                              draft.setDelivered(product.productId, quantity)
-                            }
-                            onReturnedChange={(quantity) =>
-                              draft.setReturned(product.productId, quantity)
-                            }
-                          />
-                        </Box>
-                      );
-                    })}
-                  </ScrollView>
+                  <ReceiptProductGrid products={products} columns={columns} cardWidth={cardWidth} />
                 )}
               </Box>
             </Box>
@@ -307,7 +314,7 @@ export function StaffHomeScreen() {
         <HStack className="items-center justify-between">
           <Button
             variant="outline"
-            disabled={phase === 1}
+            disabled={phase === 1 || pending}
             onPress={() => setPhase((p) => (p - 1) as 1 | 2 | 3)}
           >
             <ButtonText>Geri</ButtonText>

@@ -12,6 +12,7 @@ export default defineConfig({
       'tests/utils/**/*.{test,spec}.{ts,tsx}',
       'tests/hooks/**/*.{test,spec}.{ts,tsx}',
       'tests/services/**/*.{test,spec}.{ts,tsx}',
+      'tests/store/**/*.{test,spec}.{ts,tsx}',
       'src/**/*.{test,spec}.{ts,tsx}',
     ],
     exclude: ['node_modules/**', 'tests/integration/**'],

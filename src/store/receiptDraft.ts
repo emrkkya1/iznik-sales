@@ -22,6 +22,7 @@ type ReceiptDraftState = {
   paymentAmount: number;
   isSubmitting: boolean;
   editingDeliveryId: string | null;
+  prefilledDeliveryId: string | null;
   lastPath: BranchPath;
   lastDate: string;
   applyPath: (path: BranchPath) => void;
@@ -32,6 +33,8 @@ type ReceiptDraftState = {
   setPaymentAmount: (amount: number) => void;
   setSubmitting: (submitting: boolean) => void;
   setEditingDeliveryId: (id: string | null) => void;
+  beginEdit: (id: string) => void;
+  applyEditPrefill: (id: string, prefill: BranchPath & { date: string; entries: Record<string, DraftEntry>; paymentAmount: number }) => void;
   rememberLast: () => void;
   reset: () => void;
   clear: () => void;
@@ -53,6 +56,7 @@ function initialState() {
     paymentAmount: 0,
     isSubmitting: false,
     editingDeliveryId: null as string | null,
+    prefilledDeliveryId: null as string | null,
     lastPath: EMPTY_PATH,
     lastDate: getIstanbulToday(),
   };
@@ -109,7 +113,17 @@ export const useReceiptDraftStore = create<ReceiptDraftState>((set) => ({
   },
   setPaymentAmount: (paymentAmount) => set({ paymentAmount }),
   setSubmitting: (isSubmitting) => set({ isSubmitting }),
-  setEditingDeliveryId: (editingDeliveryId) => set({ editingDeliveryId }),
+  setEditingDeliveryId: (editingDeliveryId) => set({ editingDeliveryId, prefilledDeliveryId: null }),
+  beginEdit: (editingDeliveryId) => set((state) => ({
+    ...initialState(),
+    lastPath: state.lastPath,
+    lastDate: state.lastDate,
+    editingDeliveryId,
+  })),
+  applyEditPrefill: (id, prefill) => set((state) => {
+    if (state.editingDeliveryId !== id || state.prefilledDeliveryId === id) return state;
+    return { ...prefill, prefilledDeliveryId: id };
+  }),
   rememberLast: () =>
     set((state) => ({
       lastPath: {

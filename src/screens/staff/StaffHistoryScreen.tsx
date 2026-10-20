@@ -39,8 +39,8 @@ function toMovementRow(d: DeliveryWithBranch): MovementRow {
 export function StaffHistoryScreen() {
   const router = useRouter();
   const deliveries = useMyDeliveries();
-  const setEditingDeliveryId = useReceiptDraftStore(
-    (s) => s.setEditingDeliveryId,
+  const beginEdit = useReceiptDraftStore(
+    (s) => s.beginEdit,
   );
   const [selected, setSelected] = useState<DeliveryWithBranch | null>(null);
   const [pending, setPending] = useState<DeliveryWithBranch | null>(null);
@@ -48,7 +48,7 @@ export function StaffHistoryScreen() {
   const startEdit = (delivery: DeliveryWithBranch) => {
     setSelected(null);
     setPending(null);
-    setEditingDeliveryId(delivery.id);
+    beginEdit(delivery.id);
     router.push('/home');
   };
 

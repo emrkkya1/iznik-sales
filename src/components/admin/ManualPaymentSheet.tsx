@@ -11,6 +11,8 @@ import { useRecordManualPayment } from '@/hooks/useMutations';
 import type { PaymentType } from '@/types';
 import { getIstanbulToday } from '@/utils/dates';
 import { parsePaymentAmount } from '@/utils/parsePaymentAmount';
+import { FinancialRecoveryAction } from '@/components/domain/financial-recovery-action';
+import { getUserMessage } from '@/utils/errors';
 
 const PAYMENT_OPTIONS: DropdownOption<PaymentType>[] = [
   { value: 'field_collection', label: 'Nakit' },
@@ -46,6 +48,8 @@ export function ManualPaymentSheet({ branchId, onClose }: ManualPaymentSheetProp
   return (
     <BottomSheet open title="Ödeme Al" onClose={close} maxHeight={460}>
       <VStack space="lg">
+        <FinancialRecoveryAction visible={payment.hasPendingOperation || payment.requiresRecovery} busy={payment.isPending}
+          label="Önceki tahsilatı kontrol et" recover={() => payment.recover({ onSuccess: onClose })} />
         <VStack space="sm">
           <Text size="sm" bold className="text-foreground">Miktar (₺)</Text>
           <Input className="bg-card" isInvalid={invalidAmount}>
@@ -78,7 +82,7 @@ export function ManualPaymentSheet({ branchId, onClose }: ManualPaymentSheetProp
           />
         </VStack>
         {payment.isError ? (
-          <Text size="sm" className="text-destructive">{payment.error?.message ?? 'Ödeme kaydedilemedi. Tekrar deneyin.'}</Text>
+          <Text size="sm" className="text-destructive">{getUserMessage(payment.error)}</Text>
         ) : null}
         <HStack space="md">
           <Button variant="outline" disabled={payment.isPending} onPress={close} style={{ flex: 1 }}>

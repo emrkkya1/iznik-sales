@@ -1,3 +1,4 @@
+import { serviceClient } from './_helpers/clients';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { getIstanbulToday } from '../../src/utils/dates';
@@ -36,14 +37,14 @@ describe('rename_branch (integration)', () => {
   afterAll(async () => {
     if (!admin || !branchId) return;
     if (deliveryId) {
-      await admin.from('payments').delete().eq('delivery_id', deliveryId);
-      await admin.from('delivery_items').delete().eq('delivery_id', deliveryId);
-      await admin.from('deliveries').delete().eq('id', deliveryId);
+      await serviceClient().from('payments').delete().eq('delivery_id', deliveryId);
+      await serviceClient().from('delivery_items').delete().eq('delivery_id', deliveryId);
+      await serviceClient().from('deliveries').delete().eq('id', deliveryId);
     }
     const links = await admin.from('branch_products').select('id').eq('branch_id', branchId);
     if (links.data?.length) await admin.from('branch_product_prices').delete().in('branch_product_id', links.data.map(row => row.id));
     await admin.from('branch_products').delete().eq('branch_id', branchId);
-    await admin.from('branches').delete().eq('id', branchId);
+    await serviceClient().from('branches').delete().eq('id', branchId);
   });
 
   it('renames with trimmed Turkish text, preserves financial data, and records an audit entry', async () => {

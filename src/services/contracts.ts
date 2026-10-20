@@ -94,13 +94,14 @@ export interface DeliveryRepository {
   createDelivery(
     input: CreateDeliveryInput,
     idempotencyKey: string,
+    actorId: string,
   ): Promise<ReceiptSummary>;
-  updateDelivery(input: UpdateDeliveryInput): Promise<ReceiptSummary>;
+  updateDelivery(input: UpdateDeliveryInput, idempotencyKey: string, actorId: string): Promise<ReceiptSummary>;
   softDeleteDelivery(id: string, reason: string): Promise<void>;
 }
 
 export interface PaymentRepository {
-  recordManualPayment(input: ManualPaymentInput, idempotencyKey?: string): Promise<Payment>;
+  recordManualPayment(input: ManualPaymentInput, idempotencyKey: string, actorId: string): Promise<Payment>;
   closeReceivables(input: CloseReceivablesInput, idempotencyKey: string): Promise<BulkPaymentResult>;
 }
 

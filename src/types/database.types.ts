@@ -579,6 +579,18 @@ export type Database = {
         Args: { p_city_id: string; p_name: string }
         Returns: string
       }
+      create_delivery_with_receipt: {
+        Args: { p_branch_id: string; p_date: string; p_idempotency_key: string; p_items: Json; p_payment_amount: number; p_payment_type: string; p_actor_id: string }
+        Returns: Json
+      }
+      update_delivery_with_receipt: {
+        Args: { p_delivery_id: string; p_date: string; p_idempotency_key: string; p_items: Json; p_actor_id: string }
+        Returns: Json
+      }
+      record_manual_payment_with_receipt: {
+        Args: { p_branch_id: string; p_amount: number; p_date: string; p_payment_type: string; p_idempotency_key: string; p_actor_id: string }
+        Returns: Json
+      }
       get_branch_balance: { Args: { p_branch_id: string }; Returns: number }
       get_branch_hub_details: { Args: { p_branch_id: string }; Returns: Json }
       get_effective_price: {

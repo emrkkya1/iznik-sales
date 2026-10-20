@@ -1,12 +1,13 @@
 // @vitest-environment happy-dom
 import type { PropsWithChildren } from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ManualPaymentSheet } from './ManualPaymentSheet';
 
 const mutation = vi.hoisted(() => ({
   mutate: vi.fn(), reset: vi.fn(), isPending: false, isError: false, error: null as Error | null,
+  recover: vi.fn(), hasPendingOperation: false, requiresRecovery: false,
 }));
 vi.mock('@/hooks/useMutations', () => ({ useRecordManualPayment: () => mutation }));
 vi.mock('@/utils/dates', () => ({ getIstanbulToday: () => '2026-10-12' }));
@@ -40,12 +41,23 @@ afterEach(cleanup);
 beforeEach(() => {
   mutation.mutate.mockReset();
   mutation.reset.mockReset();
+  mutation.recover.mockReset().mockResolvedValue(undefined);
+  mutation.hasPendingOperation = false;
+  mutation.requiresRecovery = false;
   mutation.isPending = false;
   mutation.isError = false;
   mutation.error = null;
 });
 
 describe('ManualPaymentSheet', () => {
+  it('offers explicit recovery independently of the new payment amount', async () => {
+    mutation.hasPendingOperation = true;
+    const close = vi.fn();
+    render(<ManualPaymentSheet branchId="branch-1" onClose={close} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Önceki tahsilatı kontrol et' }));
+    await waitFor(() => expect(mutation.recover).toHaveBeenCalledWith({ onSuccess: close }));
+    expect(mutation.mutate).not.toHaveBeenCalled();
+  });
   it.each([
     ['field_collection', 'Nakit'], ['bank_transfer', 'Havale'],
   ])('submits %s with today’s business date and no product input', (type, label) => {
@@ -96,7 +108,7 @@ describe('ManualPaymentSheet', () => {
     mutation.isError = true;
     mutation.error = new Error('Network unavailable');
     render(<ManualPaymentSheet branchId="branch-1" onClose={vi.fn()} />);
-    expect(screen.getByText('Network unavailable')).toBeTruthy();
+    expect(screen.getByText('Bağlantı hatası. Lütfen internet bağlantınızı kontrol edin.')).toBeTruthy();
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '10' } });
     expect(mutation.reset).toHaveBeenCalled();
     const button = screen.getByRole('button', { name: 'Ödeme Al' });

@@ -44,7 +44,7 @@ async function ensureCityDistrictBranch(admin: AdminClient, prefix: string) {
     .single();
   if (district.error || !district.data) throw new Error(`district insert failed: ${district.error?.message}`);
 
-  const branch = await admin
+  const branch = await serviceClient()
     .from('branches')
     .insert({
       district_id: district.data.id,
@@ -100,28 +100,28 @@ async function ensureProductWithPrice(admin: AdminClient, branchId: string, pref
 
 async function cleanup(admin: AdminClient) {
   if (extraDeliveryIds.length > 0) {
-    await admin.from('delivery_items').delete().in('delivery_id', extraDeliveryIds);
-    await admin.from('payments').delete().in('delivery_id', extraDeliveryIds);
-    await admin.from('deliveries').delete().in('id', extraDeliveryIds);
+    await serviceClient().from('delivery_items').delete().in('delivery_id', extraDeliveryIds);
+    await serviceClient().from('payments').delete().in('delivery_id', extraDeliveryIds);
+    await serviceClient().from('deliveries').delete().in('id', extraDeliveryIds);
   }
   if (ids.softDeletedDeliveryId) {
-    await admin.from('deliveries').delete().eq('id', ids.softDeletedDeliveryId);
+    await serviceClient().from('deliveries').delete().eq('id', ids.softDeletedDeliveryId);
   }
   if (ids.updatedDeliveryId) {
-    await admin.from('delivery_items').delete().eq('delivery_id', ids.updatedDeliveryId);
-    await admin.from('payments').delete().eq('delivery_id', ids.updatedDeliveryId);
-    await admin.from('deliveries').delete().eq('id', ids.updatedDeliveryId);
+    await serviceClient().from('delivery_items').delete().eq('delivery_id', ids.updatedDeliveryId);
+    await serviceClient().from('payments').delete().eq('delivery_id', ids.updatedDeliveryId);
+    await serviceClient().from('deliveries').delete().eq('id', ids.updatedDeliveryId);
   }
   if (ids.deliveryId) {
-    await admin.from('delivery_items').delete().eq('delivery_id', ids.deliveryId);
-    await admin.from('payments').delete().eq('delivery_id', ids.deliveryId);
-    await admin.from('deliveries').delete().eq('id', ids.deliveryId);
+    await serviceClient().from('delivery_items').delete().eq('delivery_id', ids.deliveryId);
+    await serviceClient().from('payments').delete().eq('delivery_id', ids.deliveryId);
+    await serviceClient().from('deliveries').delete().eq('id', ids.deliveryId);
   }
   if (ids.paymentIds && ids.paymentIds.length > 0) {
-    await admin.from('payments').delete().in('id', ids.paymentIds);
+    await serviceClient().from('payments').delete().in('id', ids.paymentIds);
   }
   if (ids.manualPaymentId) {
-    await admin.from('payments').delete().eq('id', ids.manualPaymentId);
+    await serviceClient().from('payments').delete().eq('id', ids.manualPaymentId);
   }
   if (ids.branchProductId) {
     await admin.from('branch_product_prices').delete().eq('branch_product_id', ids.branchProductId);
@@ -131,7 +131,7 @@ async function cleanup(admin: AdminClient) {
     await admin.from('products').delete().eq('id', ids.productId);
   }
   if (ids.branchId) {
-    await admin.from('branches').delete().eq('id', ids.branchId);
+    await serviceClient().from('branches').delete().eq('id', ids.branchId);
   }
   if (ids.districtId) {
     await admin.from('districts').delete().eq('id', ids.districtId);

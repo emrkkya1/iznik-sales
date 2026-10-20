@@ -1,3 +1,4 @@
+import { serviceClient } from './_helpers/clients';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { getIstanbulToday } from '../../src/utils/dates';
@@ -20,15 +21,15 @@ describe('manual payments (integration)', () => {
     anon = await createAnonClient();
     const district = await admin.from('districts').select('id').limit(1).single();
     if (district.error) throw district.error;
-    const branch = await admin.from('branches').insert({ district_id: district.data.id, name: PREFIX, opening_balance: 100, current_balance: 100, is_active: true }).select('id').single();
+    const branch = await serviceClient().from('branches').insert({ district_id: district.data.id, name: PREFIX, opening_balance: 100, current_balance: 100, is_active: true }).select('id').single();
     if (branch.error) throw branch.error;
     branchId = branch.data.id;
   });
 
   afterAll(async () => {
     if (!admin || !branchId) return;
-    await admin.from('payments').delete().eq('branch_id', branchId);
-    await admin.from('branches').delete().eq('id', branchId);
+    await serviceClient().from('payments').delete().eq('branch_id', branchId);
+    await serviceClient().from('branches').delete().eq('id', branchId);
   });
 
   it.each(['field_collection', 'bank_transfer'])('records %s as a standalone movement and changes only the financial balance', async (type) => {

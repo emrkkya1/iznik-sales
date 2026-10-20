@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
 import { useDelivery } from './useDeliveries';
 import { useBranchLocation } from './useLocations';
@@ -8,34 +8,19 @@ import { useReceiptDraftStore } from '@/store/receiptDraft';
 // for editing (editingDeliveryId is set). Runs once per delivery id so user
 // edits are never clobbered.
 export function useEditPrefill(editingDeliveryId: string | null) {
-  const applyPath = useReceiptDraftStore((s) => s.applyPath);
-  const setDate = useReceiptDraftStore((s) => s.setDate);
-  const setEntries = useReceiptDraftStore((s) => s.setEntries);
-  const setPaymentAmount = useReceiptDraftStore((s) => s.setPaymentAmount);
+  const applyEditPrefill = useReceiptDraftStore((s) => s.applyEditPrefill);
+  const isReady = useReceiptDraftStore((s) => editingDeliveryId !== null && s.editingDeliveryId === editingDeliveryId && s.prefilledDeliveryId === editingDeliveryId);
 
   const delivery = useDelivery(editingDeliveryId);
   const branch = useBranchLocation(delivery.data?.branchId ?? null);
 
-  const prefilledRef = useRef<string | null>(null);
-
   useEffect(() => {
-    if (!editingDeliveryId) {
-      prefilledRef.current = null;
-      return;
-    }
-
+    if (!editingDeliveryId) return;
     const deliveryData = delivery.data;
     const branchData = branch.data;
-    if (!deliveryData || !branchData) return;
-    if (prefilledRef.current === editingDeliveryId) return;
-    prefilledRef.current = editingDeliveryId;
-
-    applyPath({
-      cityId: branchData.cityId,
-      districtId: branchData.districtId,
-      branchId: branchData.id,
-    });
-    setDate(deliveryData.date);
+    // Cached/placeholder data may belong to the previous request. The store
+    // also checks target identity atomically, including multiple mounted homes.
+    if (deliveryData?.id !== editingDeliveryId || !branchData || branchData.id !== deliveryData.branchId) return;
 
     const entries: Record<string, { delivered: number; returned: number }> = {};
     for (const item of deliveryData.items) {
@@ -45,11 +30,12 @@ export function useEditPrefill(editingDeliveryId: string | null) {
         returned: item.returnedQuantity,
       };
     }
-    setEntries(entries);
+    applyEditPrefill(editingDeliveryId, {
+      cityId: branchData.cityId, districtId: branchData.districtId, branchId: branchData.id,
+      date: deliveryData.date, entries,
+      paymentAmount: deliveryData.payments.filter(p => p.deletedAt === null).reduce((sum, p) => sum + p.amount, 0),
+    });
+  }, [editingDeliveryId, delivery.data, branch.data, applyEditPrefill]);
 
-    const payment = deliveryData.payments.reduce((sum, p) => sum + p.amount, 0);
-    setPaymentAmount(payment);
-  }, [editingDeliveryId, delivery.data, branch.data, applyPath, setDate, setEntries, setPaymentAmount]);
-
-  return { delivery, branch };
+  return { delivery, branch, isReady };
 }

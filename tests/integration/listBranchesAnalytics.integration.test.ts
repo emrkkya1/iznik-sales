@@ -332,7 +332,7 @@ describe('list_branches_analytics (integration)', () => {
     admin = await createAdminClient();
     staff = await createStaffClient();
     anon = await createAnonClient();
-    await seedFixtures(admin);
+    await seedFixtures(service);
   }, 60_000);
 
   afterAll(async () => {

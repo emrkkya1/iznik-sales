@@ -20,7 +20,7 @@ import type {
   CityWithCounts,
   DistrictWithCounts,
 } from '@/types';
-import { getBalanceLabel } from '@/utils/formatters';
+import { formatBalanceAmount, getBalanceLabel } from '@/utils/formatters';
 
 import { ActionMenu, type ActionMenuItem } from '../../components/admin/ActionMenu';
 import { Breadcrumb } from '../../components/admin/Breadcrumb';
@@ -51,10 +51,7 @@ function balanceTone(balance: number): 'positive' | 'negative' | 'neutral' {
 }
 
 function formatBalance(balance: number): string {
-  return new Intl.NumberFormat('tr-TR', {
-    style: 'currency',
-    currency: 'TRY',
-  }).format(Math.abs(balance));
+  return formatBalanceAmount(balance);
 }
 
 export function CitiesScreen() {

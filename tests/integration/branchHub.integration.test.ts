@@ -1,3 +1,4 @@
+import { serviceClient } from './_helpers/clients';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createAdminClient, createAnonClient, createStaffClient, type AdminClient } from './_helpers/clients';
@@ -41,11 +42,11 @@ async function getBranchHubDetails(branchId: string) {
 
 async function cleanup(admin: AdminClient) {
   if (ids.paymentIds && ids.paymentIds.length > 0) {
-    await admin.from('payments').delete().in('id', ids.paymentIds);
+    await serviceClient().from('payments').delete().in('id', ids.paymentIds);
   }
   if (ids.deliveryIds && ids.deliveryIds.length > 0) {
-    await admin.from('delivery_items').delete().in('delivery_id', ids.deliveryIds);
-    await admin.from('deliveries').delete().in('id', ids.deliveryIds);
+    await serviceClient().from('delivery_items').delete().in('delivery_id', ids.deliveryIds);
+    await serviceClient().from('deliveries').delete().in('id', ids.deliveryIds);
   }
   if (ids.branchProductId) {
     await admin.from('branch_product_prices').delete().eq('branch_product_id', ids.branchProductId);
@@ -55,7 +56,7 @@ async function cleanup(admin: AdminClient) {
     await admin.from('products').delete().eq('id', ids.productId);
   }
   if (ids.branchId) {
-    await admin.from('branches').delete().eq('id', ids.branchId);
+    await serviceClient().from('branches').delete().eq('id', ids.branchId);
   }
   if (ids.districtId) {
     await admin.from('districts').delete().eq('id', ids.districtId);
@@ -87,7 +88,7 @@ describe('branch hub details + ledger (integration)', () => {
     if (district.error || !district.data) throw new Error(`district: ${district.error?.message}`);
     ids.districtId = district.data.id;
 
-    const branch = await admin
+    const branch = await serviceClient()
       .from('branches')
       .insert({
         district_id: ids.districtId!,
@@ -230,7 +231,7 @@ describe('branch hub details + ledger (integration)', () => {
     ids.paymentIds!.push(paymentId as string);
 
     // A soft-deleted delivery should NOT contribute to metrics.
-    const deletedDelivery = await admin
+    const deletedDelivery = await serviceClient()
       .from('deliveries')
       .insert({
         branch_id: ids.branchId!,
@@ -245,7 +246,7 @@ describe('branch hub details + ledger (integration)', () => {
     if (deletedDelivery.error || !deletedDelivery.data) {
       throw new Error(`hidden delivery: ${deletedDelivery.error?.message}`);
     }
-    await admin.from('delivery_items').insert({
+    await serviceClient().from('delivery_items').insert({
       delivery_id: deletedDelivery.data.id,
       product_id: ids.productId!,
       delivered_quantity: 999,

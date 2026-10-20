@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { instrumentQuery, logMutation, logQuery } from '@/utils/logger';
+import { clearDiagnosticEvents, getDiagnosticEvents } from '@/utils/diagnostics';
 
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
@@ -24,5 +25,38 @@ describe('logger timestamps', () => {
     expect(await instrumentQuery('test', async () => [1])()).toEqual([1]);
     const failure = new Error('failed');
     await expect(instrumentQuery('test', async () => { throw failure; })()).rejects.toBe(failure);
+  });
+
+  it('correlates overlapping attempts independently and records elapsed time', async () => {
+    clearDiagnosticEvents();
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    let finish!: (value: number) => void;
+    const first = instrumentQuery('test', () => new Promise<number>(resolve => { finish = resolve; }))();
+    await instrumentQuery('test', async () => 2)();
+    finish(1);
+    await first;
+    const events = getDiagnosticEvents();
+    expect(events.map(event => event.phase)).toEqual(['start', 'start', 'success', 'success']);
+    expect(events[0].operationId).toBe(events[3].operationId);
+    expect(events[1].operationId).toBe(events[2].operationId);
+    expect(events[0].operationId).not.toBe(events[1].operationId);
+    expect(events[3].durationMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it('distinguishes cancellation without swallowing errors or retaining their content', async () => {
+    clearDiagnosticEvents();
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const controller = new AbortController();
+    controller.abort();
+    const failure = new Error('private server response');
+    await expect(instrumentQuery('test', async (_ctx: { signal: AbortSignal }) => { throw failure; })({ signal: controller.signal })).rejects.toBe(failure);
+    expect(getDiagnosticEvents()[1].phase).toBe('cancelled');
+    expect(JSON.stringify(getDiagnosticEvents())).not.toContain('private');
+  });
+
+  it('does not reject a successful query when its summarizer throws', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    expect(await instrumentQuery('test', async () => [1], () => { throw new Error('summary'); })()).toEqual([1]);
   });
 });

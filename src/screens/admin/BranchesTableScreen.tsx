@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, type ListRenderItemInfo } from 'react-native';
 import { useRouter } from 'expo-router';
+import { loadNextPageIfIdle } from '@/utils/pagination';
 
 import { Box } from '@/components/ui/box';
 import { CloseReceivablesSheet } from '@/components/admin/CloseReceivablesSheet';
@@ -436,11 +437,7 @@ export function BranchesTableScreen() {
         keyboardShouldPersistTaps="handled"
         onRefresh={() => void query.refetch()}
         refreshing={query.isRefetching && !query.isFetchingNextPage}
-        onEndReached={() => {
-          if (query.hasNextPage && !query.isFetchingNextPage) {
-            void query.fetchNextPage();
-          }
-        }}
+        onEndReached={() => loadNextPageIfIdle(query)}
         onEndReachedThreshold={0.4}
         initialNumToRender={20}
         windowSize={7}

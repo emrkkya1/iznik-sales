@@ -123,11 +123,12 @@ typecheck and lint).
   (`admin@iznik.test / admin123`, `staff@iznik.test / staff123`).
 - Sign in as `staff` or use the anon helper when the test asserts that
   the RPC rejects unauthorized callers.
-- `supabase/migrations/20240101000020_grant_dml_for_admin_clients.sql`
-  grants DML on reference tables to `authenticated` **for the test
-  harness**. RLS still gates every row. Direct writes from the admin
-  client will bypass the SECURITY DEFINER RPCs and therefore bypass
-  `log_audit()` — production code must keep going through RPCs.
+- M45 (`20240101000045_financial_write_boundary.sql`) supersedes M20's
+  financial fixture grants. Application roles cannot directly write
+  branches, deliveries, items, payments, or audit logs. Use `serviceClient()`
+  only for privileged fixture setup/cleanup; keep actual authorization and
+  RPC assertions on admin/staff/anonymous clients. Production financial
+  writes must use the checked SECURITY DEFINER RPCs.
 
 ## Local database troubleshooting
 

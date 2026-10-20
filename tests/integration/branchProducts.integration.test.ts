@@ -1,3 +1,4 @@
+import { serviceClient } from './_helpers/clients';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -26,7 +27,7 @@ async function cleanup() {
     await admin.from('branch_products').delete().eq('id', branchProductId);
   }
   if (productId) await admin.from('products').delete().eq('id', productId);
-  if (branchId) await admin.from('branches').delete().eq('id', branchId);
+  if (branchId) await serviceClient().from('branches').delete().eq('id', branchId);
   if (districtId) await admin.from('districts').delete().eq('id', districtId);
   if (cityId) await admin.from('cities').delete().eq('id', cityId);
 }
@@ -43,7 +44,7 @@ describe('branch product lifecycle RPCs (integration)', () => {
     const district = await admin.from('districts').insert({ city_id: cityId, name: `${PREFIX} İlçe` }).select('id').single();
     if (district.error || !district.data) throw district.error;
     districtId = district.data.id;
-    const branch = await admin.from('branches').insert({
+    const branch = await serviceClient().from('branches').insert({
       district_id: districtId, name: `${PREFIX} Şube`, opening_balance: 0, current_balance: 0, is_active: true,
     }).select('id').single();
     if (branch.error || !branch.data) throw branch.error;

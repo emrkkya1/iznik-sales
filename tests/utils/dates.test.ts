@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 import {
   getIstanbulToday,
@@ -61,6 +61,19 @@ describe('getDatePresetRange', () => {
 });
 
 describe('canEditDelivery', () => {
+  it('reuses formatters but reads the current clock at midnight and the edit cutoff', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-08-22T20:58:59Z'));
+      expect(canEditDelivery('2026-08-22')).toBe(true);
+      vi.setSystemTime(new Date('2026-08-22T20:59:00Z'));
+      expect(canEditDelivery('2026-08-22')).toBe(false);
+      vi.setSystemTime(new Date('2026-08-22T21:00:00Z'));
+      expect(getIstanbulToday()).toBe('2026-08-23');
+      expect(canEditDelivery('2026-08-22')).toBe(false);
+      expect(canEditDelivery('2026-08-23')).toBe(true);
+    } finally { vi.useRealTimers(); }
+  });
   it('returns false for a past date', () => {
     expect(canEditDelivery('2020-01-01')).toBe(false);
   });
@@ -184,6 +197,25 @@ describe('parseDisplayDate', () => {
 });
 
 describe('formatDateBucketLabel', () => {
+  it('does not construct another formatter for repeated rows or chart labels', () => {
+    const date = '2026-08-22T12:00:00Z';
+    const renderRow = () => {
+      getIstanbulToday();
+      canEditDelivery('2026-08-22');
+      formatDateForDisplay(date);
+      formatTime(date);
+      formatTime(date, true);
+      formatDateBucketLabel(date, 'day');
+      formatDateBucketLabel(date, 'month');
+      formatDateBucketLabel(date, 'week');
+    };
+    renderRow();
+    const constructor = vi.spyOn(Intl, 'DateTimeFormat');
+    try {
+      for (let row = 0; row < 100; row++) renderRow();
+      expect(constructor).not.toHaveBeenCalled();
+    } finally { constructor.mockRestore(); }
+  });
   it('handles Istanbul day, month, and ISO-week rollover', () => {
     expect(formatDateBucketLabel('2026-12-31T21:30:00Z', 'day')).toBe('01 Oca');
     expect(formatDateBucketLabel('2026-12-31T21:30:00Z', 'month')).toBe('Oca 27');
